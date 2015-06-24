@@ -1,0 +1,8 @@
+<p>{{title}}</p>
+{{iframe}}
+<script type="text/javascript" src="{{pluginUrl}}/js/payment.js"></script>
+<script type="text/javascript">
+    (function(){
+        paymentListener("{{orderId}}", "{{baseUrl}}");
+    })()
+</script>

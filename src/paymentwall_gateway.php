@@ -5,326 +5,338 @@
  *
  * Description: Official Paymentwall module for WordPress WooCommerce.
  * Plugin URI: https://www.paymentwall.com/en/documentation/WooCommerce/1409
- * Version: 0.2.1
+ * Version: 1.0.0
  * Author: Paymentwall
- * License: MIT
+ * License: GNU General Public License 2.0 (GPL) http://www.gnu.org/licenses/gpl.html
  *
  */
 
-add_action ( 'plugins_loaded', 'loadPaymentwallGateway', 0 );
+class Paymentwall_Gateway extends WC_Payment_Gateway
+{
+    public function __construct()
+    {
+        $this->id = 'paymentwall';
+        $this->icon = plugins_url('images/icon.png', __FILE__);
+        $this->has_fields = true;
+        $this->method_title = __('Paymentwall', 'woocommerce');
+        $this->plugin_path = plugin_dir_path(__FILE__);
 
-function loadPaymentwallGateway () {
+        // Load the form fields.
+        $this->init_form_fields();
 
-    if ( ! class_exists ( 'WC_Payment_Gateway' ) ) return; // Nothing happens here is WooCommerce is not loaded
-    
-	class Paymentwall_Gateway extends WC_Payment_Gateway {
-	
-		public function __construct () {
+        // Load the settings.
+        $this->init_settings();
 
-			$this->id = 'paymentwall';
-			$this->icon = plugins_url ( 'paymentwall-for-woocommerce/images/icon.png' );
-			$this->has_fields = true;
-			$this->method_title = __( 'Paymentwall', 'woocommerce' );
+        // Load Paymentwall Merchant Information
+        $this->initPaymentwallConfigs();
 
-			// Load the form fields.
-			$this->init_form_fields();
+        $this->title = 'Paymentwall';
+        $this->notify_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'Paymentwall_Gateway', home_url('/')));
 
-			// Load the settings.
-			$this->init_settings();
-			
-			// Load Paymentwall Merchant Information
-			$this->app_key = $this->settings['appkey'];
-			$this->secret_key = $this->settings['secretkey'];
-			$this->widget_code = $this->settings['widget'];
-			$this->description = $this->settings['description'];
-			
-			$this->title = 'Paymentwall';
-			$this->notify_url = str_replace( 'https:', 'http:', add_query_arg( 'wc-api', 'Paymentwall_Gateway', home_url ( '/' ) ) );
-			
-			// Our Actions
-			add_action ( 'woocommerce_update_options_payment_gateways_' . $this->id, array ( $this, 'process_admin_options' ) );
-			add_action ( 'woocommerce_receipt_paymentwall', array ( $this, 'receipt_page' ) );
-			add_action ( 'woocommerce_api_paymentwall_gateway', array( $this, 'check_ipn_response' ) );
-			
-		}
-		
-		/*
-		 * Makes the widget call
-		 */
-		function receipt_page ( $order_id ) {
-		
-			$order = new WC_Order ( $order_id );
-			
-			$params = array (
-			
-				'key' => $this->app_key,
-		
-				'uid' => $order->billing_email,
-		
-				'widget' => $this->widget_code,
-		
-				'sign_version' => 2,
-		
-				'amount' => $order->order_total,
-				
-				'email' => $order->billing_email,
-		
-				'currencyCode' => $order->order_currency,
-		
-				'ag_name' => 'Order #' . $order->id,
-		
-				'ag_external_id' => $order->id,
-		
-				'ag_type' => 'fixed'
+        // Our Actions
+        add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
+        add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
+        add_action('woocommerce_api_paymentwall_gateway', array($this, 'handleAction'));
+    }
 
-			);
-            
-			$params['sign'] = $this->calculateWidgetSignature($params, $this->secret_key);
-			$url = 'https://api.paymentwall.com/api/subscription';
-			
-			echo '<p>'.__( 'Please continue the purchase via Paymentwall using the widget below.', 'woocommerce' ).'</p>';
-			echo '<iframe width="700" height="800" src="' . $url . '?' . http_build_query ( $params ) . '"></iframe>';
-			
-		}
-		
-		/*
-		 * Process the order after payment is made
-		 */
-		function process_payment ( $order_id ) {
-			
-			$order = new WC_Order ( $order_id );
-			
-			global $woocommerce;
-			
-			if ( isset ( $_REQUEST [ 'ipn' ] ) && $_REQUEST [ 'ipn' ] == true ) {
-			
-				// Remove cart
-				$woocommerce->cart->empty_cart();
-				
-				// Payment complete
-				$order->payment_complete ();
-			
-				return array (
-					'result' 	=> 'success',
-					'redirect'	=> add_query_arg( 'key', $order->order_key, add_query_arg ( 'order', $order_id, get_permalink ( woocommerce_get_page_id ( 'thanks' ) ) ) )
-					
-				);
-			
-			} else {
-			
-				return array(
-					'result' 	=> 'success',
-					'redirect'	=> add_query_arg( 'key', $order->order_key, add_query_arg ( 'order', $order_id, get_permalink ( woocommerce_get_page_id ( 'pay' ) ) ) )
-				);
-				
-			}
-		}
+    function  initPaymentwallConfigs()
+    {
+        Paymentwall_Config::getInstance()->set(array(
+            'api_type' => Paymentwall_Config::API_GOODS,
+            'public_key' => $this->settings['appkey'],
+            'private_key' => $this->settings['secretkey']
+        ));
+    }
 
-		/*
-		 * Display administrative fields under the Payment Gateways tab in the Settings page
-		 */
-		function init_form_fields() {
-		
-			$this->form_fields = array (
-				'enabled' => array (
-					'title' => __( 'Enable/Disable', 'woocommerce' ),
-					'type' => 'checkbox',
-					'label' => __( 'Enable the Paymentwall Payment Solution', 'woocommerce' ),
-					'default' => 'yes'
-				),
-				'title' => array (
-					'title' => __( 'Title', 'woocommerce' ),
-					'type' => 'text',
-					'description' => __( 'This controls the title which the user sees during checkout.', 'woocommerce' ),
-					'default' => __( 'Paymentwall', 'woocommerce' )
-				),
-				'description' => array (
-					'title' => __( 'Description', 'woocommerce' ),
-					'type' => 'text',
-					'description' => __( 'This controls the description which the user sees during checkout.', 'woocommerce' ),
-					'default' => __("Pay via Paymentwall.", 'woocommerce')
-				),
-				'appkey' => array (
-					'title' => __( 'Application Key', 'woocommerce' ),
-					'type' => 'text',
-					'description' => __( 'Your Paymentwall Application Key', 'woocommerce' ),
-					'default' => ''
-				),
-				'secretkey' => array (
-					'title' => __( 'Secret Key', 'woocommerce' ),
-					'type' => 'text',
-					'description' => __( 'Your Paymentwall Secret Key', 'woocommerce' ),
-					'default' => ''
-				),
-				'widget' => array (
-					'title' => __( 'Widget Code', 'woocommerce' ),
-					'type' => 'text',
-					'description' => __( 'Enter your preferred widget code', 'woocommerce' ),
-					'default' => ''
-				)
-			);
-		} // End init_form_fields()
-	
-		/*
-		 * Displays a short description to the user during checkout
-		 */
-		function payment_fields () {
-			
-			echo $this->description;
+    /**
+     * @param $order_id
+     */
+    function receipt_page($order_id)
+    {
+        $this->initPaymentwallConfigs();
 
-		}
-		
-		/*
-		 * Displays text like introduction, instructions in the admin area of the widget
-		 */
-		public function admin_options () {
-			
-	    	?>
-	    	<h3><?php _e ( 'Paymentwall Gateway', 'woocommerce' ); ?></h3>
-	    	<p><?php _e ( 'Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', 'woocommerce' ); ?></p>
-	    	<table class="form-table">
-				<?php $this->generate_settings_html (); ?>
-			</table>
-	    	<?php
-	    }
-		
-		/*
-		 * Calculate the parameters so we know we are sending a legitimate (unaltered) request to the servers
-		 */
-		function calculateWidgetSignature($params, $secret) {
-			// work with sorted data
-			ksort($params);
-			// generate the base string
-			$baseString = '';
-			foreach($params as $key => $value) {
-				$baseString .= $key . '=' . $value;
-			}
-			$baseString .= $secret;
-			return md5($baseString);
-		}
-		
-		/*
-		 * This ensures that the pingback response was not tampered
-		 */
-		function calculatePingbackSignature($params, $secret) {
-			$str = '';
-			foreach ($params as $k=>$v) {
-				$str .= "$k=$v";
-			}
-			$str .= $secret;
-			
-			return md5($str);
-		}
-		
-		/*
-		 * Check the response from Paymentwall's Servers
-		 */
-		function check_ipn_response() {
-            
-			$_REQUEST['ipn'] = true;
+        $order = new WC_Order($order_id);
 
-			if ( isset ( $_GET [ 'paymentwallListener' ] ) && $_GET [ 'paymentwallListener' ] == 'paymentwall_IPN' ) {
-				
-				$userId = isset( $_GET [ 'uid' ] ) ? $_GET [ 'uid' ] : null;
-				$goodsId = isset( $_GET [ 'goodsid' ] ) ? $_GET [ 'goodsid' ] : null;
-				$length = isset( $_GET [ 'slength' ] ) ? $_GET [ 'slength' ] : null;
-				$period = isset( $_GET [ 'speriod' ] ) ? $_GET [ 'speriod' ] : null;
-				$type = isset( $_GET [ 'type' ] ) ? $_GET [ 'type' ] : null;
-				$reason = isset( $_GET [ 'reason' ] ) ? $_GET [ 'reason' ] : null;
-				$refId = isset( $_GET [ 'ref' ] ) ? $_GET [ 'ref' ] : null;
-				$signature = isset( $_GET ['sig' ] ) ? $_GET [ 'sig' ] : null;
-				$result = false;
-				
-                
-				if ( ! empty ( $userId ) && ! empty ( $goodsId ) && isset ( $type ) && ! empty ( $refId ) && ! empty ( $signature ) ) {
+        $extraData = $this->prepareExtraPrarams($order);
 
-					$signatureParams = array(
-						'uid' => $userId,
-						'goodsid' => $goodsId,
-						'slength' => $length,
-						'speriod' => $period,
-						'type' => $type,
-						'ref' => $refId
-					);
-					
-					$ipsWhitelist = array ( 
-						'174.36.92.186', 
-						'174.36.96.66', 
-						'174.36.92.187', 
-						'174.36.92.192', 
-						'174.37.14.28'
-                    );
-					
+        $extraData = array_merge($extraData, array(
+            'email' => $order->billing_email,
+            'integration_module' => 'woocommerce',
+            'test_mode' => $this->settings['test_mode']
+        ));
 
-					$signatureCalculated = $this->calculatePingbackSignature ( $signatureParams, $this->secret_key );
+        $widget = new Paymentwall_Widget(
+            $order->billing_email,
+            $this->settings['widget'],
+            array(
+                new Paymentwall_Product($order->id, $order->order_total, $order->order_currency, 'Order #' . $order->id)
+            ),
+            $extraData
+        );
 
-					// check if IP is in whitelist and if signature matches
-					if ( in_array ( $_SERVER [ 'REMOTE_ADDR' ], $ipsWhitelist ) ) {
-						
-                        if ( $signature == $signatureCalculated ) {
-                            $order = new WC_Order ( ( int ) $goodsId );
-                            global $woocommerce;
-                            
-                            if ( $order->get_order ( $goodsId ) ) {
-                            
-                                if ( $type == 2 ) {
-                                
-                                    $order->update_status ( 'cancelled', __( 'Reason: ' . $reason, 'woocommerce' ) );
-                                    $result = true;
-                                    
-                                } else {
-                                
-                                    $order->add_order_note ( __( 'Paymentwall payment completed', 'woocommerce' ) );
-                                    $order->payment_complete ();
-                        
-                                    $woocommerce->cart->empty_cart();
-                    
-                                    $result = true;
-                                }	
-                            
-                            } else {
-                            
-                                $result = false;
-                                die ();
-                            }
-                            
-                        }
-                        
-					} else {
-                        die ('unauthorized IP address!');
-                    }
-					
-					if ( $result ) {
+        $iframe = $widget->getHtmlCode(array(
+            'width' => '100%',
+            'height' => 400,
+            'frameborder' => 0
+        ));
 
-						die ('OK');
-						
-					} else {
-					
-						die ( 'Paymentwall IPN Request Failure' );
-					
-					}
-                    
-				} else {
+        echo $this->getTemplate('widget.html', array(
+            'orderId' => $order->id,
+            'title' => __('Please continue the purchase via Paymentwall using the widget below.', 'woocommerce'),
+            'iframe' => $iframe,
+            'baseUrl' => get_site_url(),
+            'pluginUrl' => plugins_url('', __FILE__)
+        ));
+    }
 
-                    die ('missing parameters!');
-                
-                }
-                
-			} else {
-			
-				die ('invalid request');
-				
-			}
-		}
-	}
-	
-	function WcPwGateway ( $methods ) {
-		$methods[] = 'Paymentwall_Gateway'; 
-		return $methods;
-	}
-	
-	add_filter( 'woocommerce_payment_gateways', 'WcPwGateway' );
+    /**
+     * Process the order after payment is made
+     * @param int $order_id
+     * @return array
+     */
+    function process_payment($order_id)
+    {
+        global $woocommerce;
+
+        $order = new WC_Order($order_id);
+
+        if (isset ($_REQUEST ['ipn']) && $_REQUEST ['ipn'] == true) {
+
+            // Remove cart
+            $woocommerce->cart->empty_cart();
+
+            // Payment complete
+            $order->payment_complete();
+
+            return $this->prepareProcessPaymentResult($order, 'success');
+        } else {
+            return $this->prepareProcessPaymentResult($order, 'pay');
+        }
+    }
+
+    function prepareProcessPaymentResult($order, $pageId)
+    {
+        return array(
+            'result' => 'success',
+            'redirect' => add_query_arg(
+                'key',
+                $order->order_key,
+                add_query_arg(
+                    'order',
+                    $order->id,
+                    get_permalink(wc_get_page_id($pageId))
+                )
+            )
+        );
+    }
+
+    /*
+     * Display administrative fields under the Payment Gateways tab in the Settings page
+     */
+    function init_form_fields()
+    {
+
+        $this->form_fields = array(
+            'enabled' => array(
+                'title' => __('Enable/Disable', 'woocommerce'),
+                'type' => 'checkbox',
+                'label' => __('Enable the Paymentwall Payment Solution', 'woocommerce'),
+                'default' => 'yes'
+            ),
+            'title' => array(
+                'title' => __('Title', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('This controls the title which the user sees during checkout.', 'woocommerce'),
+                'default' => __('Paymentwall', 'woocommerce')
+            ),
+            'description' => array(
+                'title' => __('Description', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('This controls the description which the user sees during checkout.', 'woocommerce'),
+                'default' => __("Pay via Paymentwall.", 'woocommerce')
+            ),
+            'appkey' => array(
+                'title' => __('Project Key', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('Your Paymentwall Project Key', 'woocommerce'),
+                'default' => ''
+            ),
+            'secretkey' => array(
+                'title' => __('Secret Key', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('Your Paymentwall Secret Key', 'woocommerce'),
+                'default' => ''
+            ),
+            'widget' => array(
+                'title' => __('Widget Code', 'woocommerce'),
+                'type' => 'text',
+                'description' => __('Enter your preferred widget code', 'woocommerce'),
+                'default' => ''
+            ),
+            'test_mode' => array(
+                'title' => __('Test Mode', 'woocommerce'),
+                'type' => 'select',
+                'description' => __('Enable test mode', 'woocommerce'),
+                'options' => array(
+                    '0' => 'No',
+                    '1' => 'Yes'
+                ),
+                'default' => '0'
+            )
+        );
+    } // End init_form_fields()
+
+    /*
+     * Displays a short description to the user during checkout
+     */
+    function payment_fields()
+    {
+        echo $this->settings['description'];
+    }
+
+    /*
+     * Displays text like introduction, instructions in the admin area of the widget
+     */
+    public function admin_options()
+    {
+        ob_start();
+        $this->generate_settings_html();
+        $settings = ob_get_contents();
+        ob_clean();
+
+        echo $this->getTemplate('admin/options.html', array(
+            'title' => __('Paymentwall Gateway', 'woocommerce'),
+            'description' => __('Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', 'woocommerce'),
+            'settings' => $settings
+        ));
+    }
+
+    /*
+     * Check the response from Paymentwall's Servers
+     */
+    function ipnResponse()
+    {
+        $this->initPaymentwallConfigs();
+        // params not use in pingback signature
+        unset($_GET['wc-api']);
+        unset($_GET['action']);
+        $_GET['sign_version'] = Paymentwall_Signature_Abstract::VERSION_THREE;
+        $pingback = new Paymentwall_Pingback($_GET, $_SERVER['REMOTE_ADDR']);
+
+        if ($pingback->validate()) {
+
+            // Get Order Info
+            $order = new WC_Order(isset($_GET['goodsid']) ? $_GET['goodsid'] : false);
+            $result = $this->handlePingback(
+                $order,
+                isset($_GET['type']) ? $_GET['type'] : false,
+                isset($_GET ['reason']) ? $_GET ['reason'] : false
+            );
+
+            if ($result) {
+                die(DEFAULT_SUCCESS_PINGBACK_VALUE);
+            } else {
+                die('Paymentwall IPN Request Failure');
+            }
+
+        } else {
+            die($pingback->getErrorSummary());
+        }
+    }
+
+    function ajaxResponse()
+    {
+        global $woocommerce;
+        $order = new WC_Order(intval($_POST['order_id']));
+        $return = array(
+            'status' => false,
+            'url' => ''
+        );
+
+        if ($order) {
+            if ($order->post_status == WC_ORDER_STATUS_PROCESSING) {
+                $woocommerce->cart->empty_cart();
+                $return['status'] = true;
+                $return['url'] = get_permalink(wc_get_page_id('checkout')) . '/order-received/' . $order->id . '?key=' . $order->post->post_password;
+            }
+        }
+        die(json_encode($return));
+    }
+
+    function handlePingback($order, $type, $reason)
+    {
+        if ($order) {
+            // Check request chargeback
+            if ($type == REQUEST_CHARGE_BACK) {
+                $order->update_status('cancelled', __('Reason: ' . $reason, 'woocommerce'));
+            } else {
+                $order->add_order_note(__('Paymentwall payment completed', 'woocommerce'));
+                $order->payment_complete();
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    function handleAction()
+    {
+        switch ($_GET['action']) {
+            case 'ajax':
+                $this->ajaxResponse();
+                break;
+            case 'ipn':
+                $this->ipnResponse();
+                break;
+            default:
+                break;
+        }
+    }
+
+    function getTemplate($templateFileName, $data)
+    {
+        if (file_exists($this->plugin_path . 'templates/' . $templateFileName)) {
+            $content = file_get_contents($this->plugin_path . 'templates/' . $templateFileName);
+            foreach ($data as $key => $var) {
+                $content = str_replace('{{' . $key . '}}', $var, $content);
+            }
+            return $content;
+        }
+        return false;
+    }
+
+    function prepareExtraPrarams($order)
+    {
+        return array(
+            'customer' => array(
+                'birthday' => '', // Unavailable
+                'sex' => '', // Unavailable
+                'firstname' => $order->billing_first_name,
+                'lastname' => $order->billing_last_name,
+                'street1' => $order->billing_address_1,
+                'street2' => $order->billing_address_2,
+                'city' => $order->billing_city,
+                'state' => $order->billing_state,
+                'postcode' => $order->billing_postcode,
+                'country' => $order->billing_country
+            ),
+            'shipping_address' => array(
+                'firstname' => $order->shipping_first_name,
+                'lastname' => $order->shipping_last_name,
+                'company' => $order->shipping_company,
+                'street1' => $order->shipping_address_1,
+                'street2' => $order->shipping_address_2,
+                'city' => $order->shipping_city,
+                'state' => $order->shipping_state,
+                'postcode' => $order->shipping_postcode,
+                'country' => $order->shipping_country
+            ),
+            'carrier_type' => $order->get_shipping_method(),
+            'shipping_fee' => array(
+                'amount' => $order->get_total_shipping(),
+                'currency' => $order->get_order_currency()
+            )
+        );
+    }
 
 }
-
-	
