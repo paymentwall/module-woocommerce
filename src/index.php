@@ -28,8 +28,6 @@ function loadPaymentwallGateway()
         return $methods;
     }
     add_filter('woocommerce_payment_gateways', 'WcPwGateway');
-    add_action('init', array(new Paymentwall_Gateway(), 'handleAction'));
 }
 
 add_action('plugins_loaded', 'loadPaymentwallGateway', 0);
-

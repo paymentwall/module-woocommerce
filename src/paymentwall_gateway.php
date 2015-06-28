@@ -39,7 +39,7 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
         // Our Actions
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
-        add_action('woocommerce_api_paymentwall_gateway', array($this, 'check_ipn_response'));
+        add_action('woocommerce_api_paymentwall_gateway', array($this, 'handleAction'));
     }
 
     /**
@@ -195,35 +195,34 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
     /*
      * Check the response from Paymentwall's Servers
      */
-    function check_ipn_response()
+    function ipnResponse()
     {
-        if (isset ($_GET ['paymentwallListener']) && $_GET ['paymentwallListener'] == 'paymentwall_IPN') {
+        $pingback = new Paymentwall_Pingback($_GET, $_SERVER['REMOTE_ADDR']);
 
-            $pingback = new Paymentwall_Pingback($_GET, $_SERVER['REMOTE_ADDR']);
+        if ($pingback->validate(true)) {
 
-            if ($pingback->validate(true)) {
+            // Get Order Info
+            $order = new WC_Order(isset($_GET['goodsid']) ? $_GET['goodsid'] : false);
+            $result = $this->handlePingback(
+                $order,
+                isset($_GET['type']) ? $_GET['type'] : false,
+                isset($_GET ['reason']) ? $_GET ['reason'] : false
+            );
 
-                // Get Order Info
-                $order = new WC_Order(isset($_GET['goodsid']) ? $_GET['goodsid'] : false);
-                $result = $this->handlePingback(
-                    $order,
-                    isset($_GET['type']) ? $_GET['type'] : false,
-                    isset($_GET ['reason']) ? $_GET ['reason'] : false
-                );
-
-                if ($result) {
-                    die(DEFAULT_SUCCESS_PINGBACK_VALUE);
-                } else {
-                    die('Paymentwall IPN Request Failure');
-                }
-
+            if ($result) {
+                die(DEFAULT_SUCCESS_PINGBACK_VALUE);
             } else {
-                die($pingback->getErrorSummary());
+                die('Paymentwall IPN Request Failure');
             }
 
         } else {
-            die ('Invalid request');
+            die($pingback->getErrorSummary());
         }
+    }
+
+    function ajaxResponse()
+    {
+        die('Hello');
     }
 
     function handlePingback($order, $type, $reason)
@@ -245,17 +244,17 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
         return false;
     }
 
-    function ajaxAction(){
-
-    }
-
     function handleAction()
     {
-        if (isset($_GET['plugin']) && $_GET['plugin'] == $this->id) {
-            $method = trim(isset($_GET['action']) && $_GET['action'] != 'handle' ? $_GET['action'] : 'index') . 'Action';
-            if (method_exists($this, $method)) {
-                $this->$method();
-            }
+        switch ($_GET['action']) {
+            case 'ajax':
+                $this->ajaxResponse();
+                break;
+            case 'ipn':
+                $this->ipnResponse();
+                break;
+            default:
+                break;
         }
     }
 
