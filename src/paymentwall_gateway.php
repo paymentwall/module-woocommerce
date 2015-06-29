@@ -109,7 +109,6 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
             $order->payment_complete();
 
             return $this->prepareProcessPaymentResult($order, 'success');
-
         } else {
             return $this->prepareProcessPaymentResult($order, 'pay');
         }
@@ -218,10 +217,13 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
     function ipnResponse()
     {
         $this->initPaymentwallConfigs();
+        // params not use in pingback signature
+        unset($_GET['wc-api']);
+        unset($_GET['action']);
         $_GET['sign_version'] = Paymentwall_Signature_Abstract::VERSION_THREE;
         $pingback = new Paymentwall_Pingback($_GET, $_SERVER['REMOTE_ADDR']);
 
-        if ($pingback->validate(true)) {
+        if ($pingback->validate()) {
 
             // Get Order Info
             $order = new WC_Order(isset($_GET['goodsid']) ? $_GET['goodsid'] : false);
@@ -252,7 +254,7 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
         );
 
         if ($order) {
-            if ($order->post_status == WC_ORDER_STATUS_COMPLETED) {
+            if ($order->post_status == WC_ORDER_STATUS_PROCESSING) {
                 $woocommerce->cart->empty_cart();
                 $return['status'] = true;
                 $return['url'] = get_permalink(wc_get_page_id('checkout')) . '/order-received/' . $order->id . '?key=' . $order->post->post_password;

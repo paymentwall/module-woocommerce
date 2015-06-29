@@ -15,6 +15,7 @@ define('REQUEST_CHANGE_BACK', 2);
 define('DEFAULT_SUCCESS_PINGBACK_VALUE', 'OK');
 define('WC_ORDER_STATUS_PENDING', 'wc-pending');
 define('WC_ORDER_STATUS_COMPLETED', 'wc-completed');
+define('WC_ORDER_STATUS_PROCESSING', 'wc-processing');
 
 function loadPaymentwallGateway()
 {
