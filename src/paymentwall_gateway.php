@@ -16,9 +16,10 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
     public function __construct()
     {
         $this->id = 'paymentwall';
-        $this->icon = plugins_url('paymentwall/images/icon.png');
+        $this->icon = plugins_url('images/icon.png', __FILE__);
         $this->has_fields = true;
         $this->method_title = __('Paymentwall', 'woocommerce');
+        $this->plugin_path = plugin_dir_path(__FILE__);
 
         // Load the form fields.
         $this->init_form_fields();
@@ -27,11 +28,7 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
         $this->init_settings();
 
         // Load Paymentwall Merchant Information
-        Paymentwall_Config::getInstance()->set(array(
-            'api_type' => Paymentwall_Config::API_GOODS,
-            'public_key' => $this->settings['appkey'],
-            'private_key' => $this->settings['secretkey']
-        ));
+        $this->initPaymentwallConfigs();
 
         $this->title = 'Paymentwall';
         $this->notify_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'Paymentwall_Gateway', home_url('/')));
@@ -42,12 +39,31 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
         add_action('woocommerce_api_paymentwall_gateway', array($this, 'handleAction'));
     }
 
+    function  initPaymentwallConfigs()
+    {
+        Paymentwall_Config::getInstance()->set(array(
+            'api_type' => Paymentwall_Config::API_GOODS,
+            'public_key' => $this->settings['appkey'],
+            'private_key' => $this->settings['secretkey']
+        ));
+    }
+
     /**
      * @param $order_id
      */
     function receipt_page($order_id)
     {
+        $this->initPaymentwallConfigs();
+
         $order = new WC_Order($order_id);
+
+        $extraData = $this->prepareExtraPrarams($order);
+
+        $extraData = array_merge($extraData, array(
+            'email' => $order->billing_email,
+            'integration_module' => 'woocommerce',
+            'test_mode' => $this->settings['test_mode']
+        ));
 
         $widget = new Paymentwall_Widget(
             $order->billing_email,
@@ -55,11 +71,7 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
             array(
                 new Paymentwall_Product($order->id, $order->order_total, $order->order_currency, 'Order #' . $order->id)
             ),
-            array(
-                'email' => $order->billing_email,
-                'integration_module' => 'woocommerce',
-                'test_mode' => $this->settings['test_mode']
-            )
+            $extraData
         );
 
         $iframe = $widget->getHtmlCode(array(
@@ -68,8 +80,13 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
             'frameborder' => 0
         ));
 
-        echo '<p>' . __('Please continue the purchase via Paymentwall using the widget below.', 'woocommerce') . '</p>';
-        echo $iframe;
+        echo $this->getTemplate('widget.html', array(
+            'orderId' => $order->id,
+            'title' => __('Please continue the purchase via Paymentwall using the widget below.', 'woocommerce'),
+            'iframe' => $iframe,
+            'baseUrl' => get_site_url(),
+            'pluginUrl' => plugins_url('', __FILE__)
+        ));
     }
 
     /**
@@ -81,7 +98,7 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
     {
         global $woocommerce;
 
-        $order = new WC_Order ($order_id);
+        $order = new WC_Order($order_id);
 
         if (isset ($_REQUEST ['ipn']) && $_REQUEST ['ipn'] == true) {
 
@@ -183,13 +200,16 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
      */
     public function admin_options()
     {
-        ?>
-        <h3><?php _e('Paymentwall Gateway', 'woocommerce'); ?></h3>
-        <p><?php _e('Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', 'woocommerce'); ?></p>
-        <table class="form-table">
-            <?php $this->generate_settings_html(); ?>
-        </table>
-    <?php
+        ob_start();
+        $this->generate_settings_html();
+        $settings = ob_get_contents();
+        ob_clean();
+
+        echo $this->getTemplate('admin/options.html', array(
+            'title' => __('Paymentwall Gateway', 'woocommerce'),
+            'description' => __('Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', 'woocommerce'),
+            'settings' => $settings
+        ));
     }
 
     /*
@@ -197,6 +217,8 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
      */
     function ipnResponse()
     {
+        $this->initPaymentwallConfigs();
+        $_GET['sign_version'] = Paymentwall_Signature_Abstract::VERSION_THREE;
         $pingback = new Paymentwall_Pingback($_GET, $_SERVER['REMOTE_ADDR']);
 
         if ($pingback->validate(true)) {
@@ -222,21 +244,32 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
 
     function ajaxResponse()
     {
-        die('Hello');
+        global $woocommerce;
+        $order = new WC_Order(intval($_POST['order_id']));
+        $return = array(
+            'status' => false,
+            'url' => ''
+        );
+
+        if ($order) {
+            if ($order->post_status == WC_ORDER_STATUS_COMPLETED) {
+                $woocommerce->cart->empty_cart();
+                $return['status'] = true;
+                $return['url'] = get_permalink(wc_get_page_id('checkout')) . '/order-received/' . $order->id . '?key=' . $order->post->post_password;
+            }
+        }
+        die(json_encode($return));
     }
 
     function handlePingback($order, $type, $reason)
     {
-        global $woocommerce;
         if ($order) {
-
             // Check request changeback
             if ($type == REQUEST_CHANGE_BACK) {
                 $order->update_status('cancelled', __('Reason: ' . $reason, 'woocommerce'));
             } else {
                 $order->add_order_note(__('Paymentwall payment completed', 'woocommerce'));
                 $order->payment_complete();
-                $woocommerce->cart->empty_cart();
             }
             return true;
         }
@@ -256,6 +289,52 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
             default:
                 break;
         }
+    }
+
+    function getTemplate($templateFileName, $data)
+    {
+        if (file_exists($this->plugin_path . 'templates/' . $templateFileName)) {
+            $content = file_get_contents($this->plugin_path . 'templates/' . $templateFileName);
+            foreach ($data as $key => $var) {
+                $content = str_replace('{{' . $key . '}}', $var, $content);
+            }
+            return $content;
+        }
+        return false;
+    }
+
+    function prepareExtraPrarams($order)
+    {
+        return array(
+            'customer' => array(
+                'birthday' => '', // Unavailable
+                'sex' => '', // Unavailable
+                'firstname' => $order->billing_first_name,
+                'lastname' => $order->billing_last_name,
+                'street1' => $order->billing_address_1,
+                'street2' => $order->billing_address_2,
+                'city' => $order->billing_city,
+                'state' => $order->billing_state,
+                'postcode' => $order->billing_postcode,
+                'country' => $order->billing_country
+            ),
+            'shipping_address' => array(
+                'firstname' => $order->shipping_first_name,
+                'lastname' => $order->shipping_last_name,
+                'company' => $order->shipping_company,
+                'street1' => $order->shipping_address_1,
+                'street2' => $order->shipping_address_2,
+                'city' => $order->shipping_city,
+                'state' => $order->shipping_state,
+                'postcode' => $order->shipping_postcode,
+                'country' => $order->shipping_country
+            ),
+            'carrier_type' => $order->get_shipping_method(),
+            'shipping_fee' => array(
+                'amount' => $order->get_total_shipping(),
+                'currency' => $order->get_order_currency()
+            )
+        );
     }
 
 }
