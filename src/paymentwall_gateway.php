@@ -266,8 +266,8 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
     function handlePingback($order, $type, $reason)
     {
         if ($order) {
-            // Check request changeback
-            if ($type == REQUEST_CHANGE_BACK) {
+            // Check request chargeback
+            if ($type == REQUEST_CHARGE_BACK) {
                 $order->update_status('cancelled', __('Reason: ' . $reason, 'woocommerce'));
             } else {
                 $order->add_order_note(__('Paymentwall payment completed', 'woocommerce'));
