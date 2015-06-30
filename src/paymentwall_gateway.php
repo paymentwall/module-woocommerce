@@ -158,7 +158,7 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
             'appkey' => array(
                 'title' => __('Project Key', 'woocommerce'),
                 'type' => 'text',
-                'description' => __('Your Paymentwall Application Key', 'woocommerce'),
+                'description' => __('Your Paymentwall Project Key', 'woocommerce'),
                 'default' => ''
             ),
             'secretkey' => array(
