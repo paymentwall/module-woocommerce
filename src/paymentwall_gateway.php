@@ -181,7 +181,7 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
                     '0' => 'No',
                     '1' => 'Yes'
                 ),
-                'default' => '1'
+                'default' => '0'
             )
         );
     } // End init_form_fields()
