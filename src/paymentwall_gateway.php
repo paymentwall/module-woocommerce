@@ -177,10 +177,6 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
                         // Delivery Confirmation
                         $delivery = new Paymentwall_GenerericApiObject('delivery');
                         $response = $delivery->post($this->prepareDeliveryConfirmationData($order));
-
-                        if (isset($response['error'])) {
-                            var_dump($response['error'], $response['notices']);
-                        }
                     }
 
                     $order->add_order_note(__('Paymentwall payment completed', 'woocommerce'));
