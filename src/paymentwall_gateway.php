@@ -176,7 +176,7 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
                     if ($this->settings['enable_delivery']) {
                         // Delivery Confirmation
                         $delivery = new Paymentwall_GenerericApiObject('delivery');
-                        $response = $delivery->post($this->prepareDeliveryConfirmationData($order));
+                        $response = $delivery->post($this->prepareDeliveryConfirmationData($order, $pingback->getReferenceId()));
                     }
 
                     $order->add_order_note(__('Paymentwall payment completed', 'woocommerce'));
@@ -257,10 +257,10 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
         );
     }
 
-    function prepareDeliveryConfirmationData($order)
+    function prepareDeliveryConfirmationData($order, $ref)
     {
         return array(
-            'payment_id' => $order->payment_method,
+            'payment_id' => $ref,
             'type' => 'digital',
             'status' => 'delivered',
             'estimated_delivery_datetime' => date('Y/m/d H:i:s'),
