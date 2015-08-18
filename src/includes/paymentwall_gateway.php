@@ -5,40 +5,35 @@
  *
  * Description: Official Paymentwall module for WordPress WooCommerce.
  * Plugin URI: https://www.paymentwall.com/en/documentation/WooCommerce/1409
- * Version: 1.0.1
  * Author: Paymentwall
  * License: The MIT License (MIT)
  *
  */
 
-class Paymentwall_Gateway extends WC_Payment_Gateway
+class Paymentwall_Gateway extends Paymentwall_Abstract
 {
+    public $id = 'paymentwall';
+    public $has_fields = true;
+
     public function __construct()
     {
-        $this->id = 'paymentwall';
-        $this->icon = plugins_url('images/icon.png', __FILE__);
-        $this->has_fields = true;
+        parent::__construct();
+
+        $this->icon = WC_PAYMENTWALL_PLUGIN_URL . '/assets/images/icon.png';
         $this->method_title = __('Paymentwall', 'woocommerce');
-        $this->plugin_path = plugin_dir_path(__FILE__);
-
-        // Load the form fields.
-        $this->init_form_fields();
-
-        // Load the settings.
-        $this->init_settings();
-
-        // Load Paymentwall Merchant Information
-        $this->initPaymentwallConfigs();
-
-        $this->title = 'Paymentwall';
+        $this->method_description = __('Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', 'woocommerce');
+        $this->title = $this->settings['title'];
         $this->notify_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'Paymentwall_Gateway', home_url('/')));
 
         // Our Actions
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
-        add_action('woocommerce_api_paymentwall_gateway', array($this, 'handleAction'));
+        add_action('woocommerce_api_' . $this->id . '_gateway', array($this, 'handleAction'));
     }
 
+    /**
+     * Initial Paymentwall Configs
+     */
     function  initPaymentwallConfigs()
     {
         Paymentwall_Config::getInstance()->set(array(
@@ -55,7 +50,7 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
     {
         $this->initPaymentwallConfigs();
 
-        $order = new WC_Order($order_id);
+        $order = wc_get_order($order_id);
 
         $widget = new Paymentwall_Widget(
             $order->billing_email,
@@ -79,6 +74,9 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
             'frameborder' => 0
         ));
 
+        // Clear shopping cart
+        WC()->cart->empty_cart();
+
         echo $this->getTemplate('widget.html', array(
             'orderId' => $order->id,
             'title' => __('Please continue the purchase via Paymentwall using the widget below.', 'woocommerce'),
@@ -95,26 +93,8 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
      */
     function process_payment($order_id)
     {
-        global $woocommerce;
+        $order = wc_get_order($order_id);
 
-        $order = new WC_Order($order_id);
-
-        if (isset ($_REQUEST ['ipn']) && $_REQUEST ['ipn'] == true) {
-
-            // Remove cart
-            $woocommerce->cart->empty_cart();
-
-            // Payment complete
-            $order->payment_complete();
-
-            return $this->prepareProcessPaymentResult($order, 'success');
-        } else {
-            return $this->prepareProcessPaymentResult($order, 'pay');
-        }
-    }
-
-    function prepareProcessPaymentResult($order, $pageId)
-    {
         return array(
             'result' => 'success',
             'redirect' => add_query_arg(
@@ -123,38 +103,13 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
                 add_query_arg(
                     'order',
                     $order->id,
-                    get_permalink(wc_get_page_id($pageId))
+                    $order->get_checkout_payment_url(true)
                 )
             )
         );
     }
 
-    /*
-     * Displays a short description to the user during checkout
-     */
-    function payment_fields()
-    {
-        echo $this->settings['description'];
-    }
-
-    /*
-     * Displays text like introduction, instructions in the admin area of the widget
-     */
-    public function admin_options()
-    {
-        ob_start();
-        $this->generate_settings_html();
-        $settings = ob_get_contents();
-        ob_clean();
-
-        echo $this->getTemplate('admin/options.html', array(
-            'title' => __('Paymentwall Gateway', 'woocommerce'),
-            'description' => __('Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', 'woocommerce'),
-            'settings' => $settings
-        ));
-    }
-
-    /*
+    /**
      * Check the response from Paymentwall's Servers
      */
     function ipnResponse()
@@ -180,7 +135,7 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
                     }
 
                     $order->add_order_note(__('Paymentwall payment completed', 'woocommerce'));
-                    $order->payment_complete();
+                    $order->payment_complete($pingback->getReferenceId());
 
                 } elseif ($pingback->isCancelable()) {
                     $order->update_status('cancelled', __('Reason: ' . $pingback->getParameter('reason'), 'woocommerce'));
@@ -196,6 +151,9 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
         }
     }
 
+    /**
+     * Process Ajax Request
+     */
     function ajaxResponse()
     {
         global $woocommerce;
@@ -215,7 +173,9 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
         die(json_encode($return));
     }
 
-
+    /**
+     * Handle Action
+     */
     function handleAction()
     {
         switch ($_GET['action']) {
@@ -228,33 +188,6 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
             default:
                 break;
         }
-    }
-
-    function getTemplate($templateFileName, $data)
-    {
-        if (file_exists($this->plugin_path . 'templates/' . $templateFileName)) {
-            $content = file_get_contents($this->plugin_path . 'templates/' . $templateFileName);
-            foreach ($data as $key => $var) {
-                $content = str_replace('{{' . $key . '}}', $var, $content);
-            }
-            return $content;
-        }
-        return false;
-    }
-
-    function prepareUserProfileData($order)
-    {
-        return array(
-            'customer[city]' => $order->billing_city,
-            'customer[state]' => $order->billing_state,
-            'customer[address]' => $order->shipping_address_1,
-            'customer[country]' => $order->shipping_country,
-            'customer[zip]' => $order->billing_postcode,
-            'customer[username]' => $order->billing_email,
-            'customer[firstname]' => $order->billing_first_name,
-            'customer[lastname]' => $order->billing_last_name,
-            'email' => $order->billing_email,
-        );
     }
 
     function prepareDeliveryConfirmationData($order, $ref)
@@ -273,77 +206,11 @@ class Paymentwall_Gateway extends WC_Payment_Gateway
             'shipping_address[country]' => $order->shipping_country,
             'shipping_address[street]' => $order->shipping_address_1,
             'shipping_address[state]' => $order->shipping_state,
-            'shipping_address[phone]' => '',
             'shipping_address[zip]' => $order->shipping_postcode,
             'shipping_address[city]' => $order->shipping_city,
             'reason' => 'none',
             'is_test' => $this->settings['test_mode'] ? 1 : 0,
-            'product_description' => '',
         );
     }
 
-    /*
-     * Display administrative fields under the Payment Gateways tab in the Settings page
-     */
-    function init_form_fields()
-    {
-        $this->form_fields = array(
-            'enabled' => array(
-                'title' => __('Enable/Disable', 'woocommerce'),
-                'type' => 'checkbox',
-                'label' => __('Enable the Paymentwall Payment Solution', 'woocommerce'),
-                'default' => 'yes'
-            ),
-            'title' => array(
-                'title' => __('Title', 'woocommerce'),
-                'type' => 'text',
-                'description' => __('This controls the title which the user sees during checkout.', 'woocommerce'),
-                'default' => __('Paymentwall', 'woocommerce')
-            ),
-            'description' => array(
-                'title' => __('Description', 'woocommerce'),
-                'type' => 'text',
-                'description' => __('This controls the description which the user sees during checkout.', 'woocommerce'),
-                'default' => __("Pay via Paymentwall.", 'woocommerce')
-            ),
-            'appkey' => array(
-                'title' => __('Project Key', 'woocommerce'),
-                'type' => 'text',
-                'description' => __('Your Paymentwall Project Key', 'woocommerce'),
-                'default' => ''
-            ),
-            'secretkey' => array(
-                'title' => __('Secret Key', 'woocommerce'),
-                'type' => 'text',
-                'description' => __('Your Paymentwall Secret Key', 'woocommerce'),
-                'default' => ''
-            ),
-            'widget' => array(
-                'title' => __('Widget Code', 'woocommerce'),
-                'type' => 'text',
-                'description' => __('Enter your preferred widget code', 'woocommerce'),
-                'default' => ''
-            ),
-            'test_mode' => array(
-                'title' => __('Test Mode', 'woocommerce'),
-                'type' => 'select',
-                'description' => __('Enable test mode', 'woocommerce'),
-                'options' => array(
-                    '0' => 'No',
-                    '1' => 'Yes'
-                ),
-                'default' => '1'
-            ),
-            'enable_delivery' => array(
-                'title' => __('Enable Delivery Confirmation API', 'woocommerce'),
-                'type' => 'select',
-                'description' => '',
-                'options' => array(
-                    '1' => 'Yes',
-                    '0' => 'No'
-                ),
-                'default' => '1'
-            )
-        );
-    } // End init_form_fields()
 }
