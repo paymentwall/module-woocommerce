@@ -4,19 +4,16 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
 {
     public function __construct()
     {
-        $this->plugin_path = WC_PAYMENTWALL_PLUGIN_PATH;
+        $this->plugin_path = PW_PLUGIN_PATH;
 
         // Load the settings.
         $this->init_settings();
         $this->init_form_fields();
-
-        // Load Paymentwall Merchant Information
-        $this->initPaymentwallConfigs();
     }
 
-    abstract public function initPaymentwallConfigs();
+    abstract public function init_paymentwall_configs();
 
-    protected function getTemplate($templateFileName, $data = array())
+    protected function get_template($templateFileName, $data = array())
     {
         if (file_exists($this->plugin_path . 'templates/' . $templateFileName)) {
             $content = file_get_contents($this->plugin_path . 'templates/' . $templateFileName);
@@ -28,7 +25,7 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
         return false;
     }
 
-    protected function prepareUserProfileData($order)
+    protected function prepare_user_profile_data($order)
     {
         return array(
             'customer[city]' => $order->billing_city,
@@ -69,7 +66,7 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
         $settings = ob_get_contents();
         ob_clean();
 
-        echo $this->getTemplate('admin/options.html', array(
+        echo $this->get_template('admin/options.html', array(
             'title' => $this->method_title,
             'description' => $this->method_description,
             'settings' => $settings

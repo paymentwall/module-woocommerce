@@ -21,19 +21,19 @@ class Paymentwall_Brick extends Paymentwall_Abstract
 
         $this->title = $this->settings['title'];
         $this->notify_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'Paymentwall_Brick', home_url('/')));
-        $this->method_title = __('Brick', 'woocommerce');
-        $this->method_description = __('Brick provides in-app and fully customizable credit card processing for merchants around the world. With Brick connected to banks in different countries, Paymentwall has created the best global credit card processing solution in the world to help you process in local currency.', 'woocommerce');
+        $this->method_title = __('Brick', 'paymentwall-for-woocommerce');
+        $this->method_description = __('Brick provides in-app and fully customizable credit card processing for merchants around the world. With Brick connected to banks in different countries, Paymentwall has created the best global credit card processing solution in the world to help you process in local currency.', 'paymentwall-for-woocommerce');
 
         // Our Actions
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
-        add_filter('woocommerce_after_checkout_validation', array($this, 'brickFieldsValidation'));
+        add_filter('woocommerce_after_checkout_validation', array($this, 'brick_fields_validation'));
     }
 
 
     /**
      * Initial Paymentwall Configs
      */
-    public function  initPaymentwallConfigs()
+    public function  init_paymentwall_configs()
     {
         Paymentwall_Config::getInstance()->set(array(
             'api_type' => Paymentwall_Config::API_GOODS,
@@ -47,7 +47,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract
      */
     public function payment_fields()
     {
-        echo $this->getTemplate('brick/form.html', array(
+        echo $this->get_template('brick/form.html', array(
             'payment_id' => $this->id,
             'public_key' => $this->settings['publickey'],
             'entry_card_number' => __("Card number"),
@@ -64,6 +64,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract
      */
     public function process_payment($order_id)
     {
+        $this->init_paymentwall_configs();
         $return = array(
             'result' => 'fail',
             'redirect' => ''
@@ -74,8 +75,8 @@ class Paymentwall_Brick extends Paymentwall_Abstract
 
         try {
             $charge->create(array_merge(
-                $this->prepareUserProfileData($order), // for User Profile API
-                $this->prepareCardInfo($order)
+                $this->prepare_user_profile_data($order), // for User Profile API
+                $this->prepare_card_info($order)
             ));
 
             $response = $charge->getPublicData();
@@ -84,7 +85,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract
                 if ($charge->isCaptured()) {
 
                     // Add order note
-                    $order->add_order_note(sprintf(__('Brick payment approved (ID: %s, Card: xxxx-%s)', 'woocommerce'), $charge->getId(), $charge->getCard()->getAlias()));
+                    $order->add_order_note(sprintf(__('Brick payment approved (ID: %s, Card: xxxx-%s)', 'paymentwall-for-woocommerce'), $charge->getId(), $charge->getCard()->getAlias()));
 
                     // Payment complete
                     $order->payment_complete($charge->getId());
@@ -115,7 +116,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract
      * @return array
      * @throws Exception
      */
-    function prepareCardInfo($order)
+    function prepare_card_info($order)
     {
         if (!isset($_POST['brick'])) {
             throw new Exception("Payment Invalid!");
@@ -129,14 +130,14 @@ class Paymentwall_Brick extends Paymentwall_Abstract
             'currency' => $order->get_order_currency(),
             'email' => $order->billing_email,
             'fingerprint' => $brick['fingerprint'],
-            'description' => sprintf(__('%s - Order #%s', 'woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
+            'description' => sprintf(__('%s - Order #%s', 'paymentwall-for-woocommerce'), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
         );
     }
 
     /**
      * Add custom fields validation
      */
-    public function brickFieldsValidation()
+    public function brick_fields_validation()
     {
         if ($_POST['payment_method'] == $this->id) {
             $brick = $_POST['brick'];

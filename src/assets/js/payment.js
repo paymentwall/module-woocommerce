@@ -1,5 +1,5 @@
 function paymentListener(orderId, baseUrl) {
-    setInterval(function () {
+    var pwInterval = setInterval(function () {
         var r = new XMLHttpRequest();
         r.open("POST", baseUrl + '/index.php?wc-api=paymentwall_gateway&action=ajax', true);
         r.onreadystatechange = function () {
@@ -7,6 +7,7 @@ function paymentListener(orderId, baseUrl) {
             if (r.responseText) {
                 var data = JSON.parse(r.responseText);
                 if (data && data.status == '1') {
+                    clearInterval(pwInterval);
                     location.href = data.url;
                 }
             }
@@ -27,7 +28,7 @@ function brickTokenizeCard() {
     }, function (response) {
         if (response.type == 'Error') {
             // handle errors
-            alert("Brick errors:\n" + " - " + response.error.join("\n - "));
+            alert("Brick error(s):\n" + " - " + (typeof response.error === 'string' ? response.error : response.error.join("\n - ")));
         } else {
 
             jQuery('#brick-token').val(response.token);

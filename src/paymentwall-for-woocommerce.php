@@ -1,5 +1,6 @@
 <?php
 
+defined('ABSPATH') or exit();
 /*
  * Plugin Name: Paymentwall for WooCommerce
  * Plugin URI: https://www.paymentwall.com/en/documentation/WooCommerce/1409
@@ -7,48 +8,49 @@
  * Version: 1.2.0
  * Author: The Paymentwall Team
  * Author URI: http://www.paymentwall.com/
+ * Text Domain: paymentwall-for-woocommerce
  * License: The MIT License (MIT)
  *
  */
 
-define('DEFAULT_SUCCESS_PINGBACK_VALUE', 'OK');
-define('WC_ORDER_STATUS_PENDING', 'wc-pending');
-define('WC_ORDER_STATUS_COMPLETED', 'wc-completed');
-define('WC_ORDER_STATUS_PROCESSING', 'wc-processing');
-define('WC_PAYMENTWALL_PLUGIN_PATH', plugin_dir_path(__FILE__));
-define('WC_PAYMENTWALL_PLUGIN_URL', plugins_url('', __FILE__));
+define('PW_DEFAULT_SUCCESS_PINGBACK_VALUE', 'OK');
+define('PW_ORDER_STATUS_PENDING', 'wc-pending');
+define('PW_ORDER_STATUS_COMPLETED', 'wc-completed');
+define('PW_ORDER_STATUS_PROCESSING', 'wc-processing');
+define('PW_PLUGIN_PATH', plugin_dir_path(__FILE__));
+define('PW_PLUGIN_URL', plugins_url('', __FILE__));
 
-function loadPaymentwallGateway()
+function load_paymentwall_payments()
 {
     if (!class_exists('WC_Payment_Gateway')) return; // Nothing happens here is WooCommerce is not loaded
 
     include(dirname(__FILE__) . '/lib/paymentwall-php/lib/paymentwall.php');
-    include(dirname(__FILE__) . '/includes/paymentwall_abstract.php');
-    include(dirname(__FILE__) . '/includes/paymentwall_gateway.php');
-    include(dirname(__FILE__) . '/includes/paymentwall_brick.php');
+    include(dirname(__FILE__) . '/includes/class-paymentwall-abstract.php');
+    include(dirname(__FILE__) . '/includes/class-paymentwall-gateway.php');
+    include(dirname(__FILE__) . '/includes/class-paymentwall-brick.php');
 
-    function WcPwGateway($methods)
+    function paymentwall_payments($methods)
     {
         $methods[] = 'Paymentwall_Gateway';
         $methods[] = 'Paymentwall_Brick';
         return $methods;
     }
 
-    add_filter('woocommerce_payment_gateways', 'WcPwGateway');
+    add_filter('woocommerce_payment_gateways', 'paymentwall_payments');
 }
 
-add_action('plugins_loaded', 'loadPaymentwallGateway', 0);
+add_action('plugins_loaded', 'load_paymentwall_payments', 0);
 
 /**
  * Add Paymentwall Scripts
  */
-function paymentwallScripts()
+function paymentwall_scripts()
 {
-    wp_register_script('placeholder', WC_PAYMENTWALL_PLUGIN_URL . '/assets/js/payment.js', array('jquery'), '1', true);
+    wp_register_script('placeholder', PW_PLUGIN_URL . '/assets/js/payment.js', array('jquery'), '1', true);
     wp_enqueue_script('placeholder');
 }
 
-add_action('wp_enqueue_scripts', 'paymentwallScripts');
+add_action('wp_enqueue_scripts', 'paymentwall_scripts');
 
 /**
  * Require the woocommerce plugin installed first

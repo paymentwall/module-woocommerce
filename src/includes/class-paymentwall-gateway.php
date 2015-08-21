@@ -19,22 +19,22 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     {
         parent::__construct();
 
-        $this->icon = WC_PAYMENTWALL_PLUGIN_URL . '/assets/images/icon.png';
-        $this->method_title = __('Paymentwall', 'woocommerce');
-        $this->method_description = __('Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', 'woocommerce');
+        $this->icon = PW_PLUGIN_URL . '/assets/images/icon.png';
+        $this->method_title = __('Paymentwall', 'paymentwall-for-woocommerce');
+        $this->method_description = __('Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', 'paymentwall-for-woocommerce');
         $this->title = $this->settings['title'];
         $this->notify_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'Paymentwall_Gateway', home_url('/')));
 
         // Our Actions
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
-        add_action('woocommerce_api_' . $this->id . '_gateway', array($this, 'handleAction'));
+        add_action('woocommerce_api_' . $this->id . '_gateway', array($this, 'handle_action'));
     }
 
     /**
      * Initial Paymentwall Configs
      */
-    function  initPaymentwallConfigs()
+    function  init_paymentwall_configs()
     {
         Paymentwall_Config::getInstance()->set(array(
             'api_type' => Paymentwall_Config::API_GOODS,
@@ -48,10 +48,9 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
      */
     function receipt_page($order_id)
     {
-        $this->initPaymentwallConfigs();
+        $this->init_paymentwall_configs();
 
         $order = wc_get_order($order_id);
-
         $widget = new Paymentwall_Widget(
             $order->billing_email,
             $this->settings['widget'],
@@ -64,7 +63,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
                     'integration_module' => 'woocommerce',
                     'test_mode' => $this->settings['test_mode']
                 ),
-                $this->prepareUserProfileData($order)
+                $this->prepare_user_profile_data($order)
             )
         );
 
@@ -77,9 +76,9 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
         // Clear shopping cart
         WC()->cart->empty_cart();
 
-        echo $this->getTemplate('widget.html', array(
+        echo $this->get_template('widget.html', array(
             'orderId' => $order->id,
-            'title' => __('Please continue the purchase via Paymentwall using the widget below.', 'woocommerce'),
+            'title' => __('Please continue the purchase via Paymentwall using the widget below.', 'paymentwall-for-woocommerce'),
             'iframe' => $iframe,
             'baseUrl' => get_site_url(),
             'pluginUrl' => plugins_url('', __FILE__)
@@ -112,18 +111,14 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * Check the response from Paymentwall's Servers
      */
-    function ipnResponse()
+    function ipn_response()
     {
-        $this->initPaymentwallConfigs();
-        // params not use in pingback signature
-        unset($_GET['wc-api']);
-        unset($_GET['action']);
-
+        $this->init_paymentwall_configs();
         $pingback = new Paymentwall_Pingback($_GET, $_SERVER['REMOTE_ADDR']);
 
         if ($pingback->validate()) {
 
-            if ($order = new WC_Order($pingback->getProductId())) {
+            if ($order = wc_get_order($pingback->getProductId())) {
 
                 if ($pingback->isDeliverable()) {
 
@@ -131,17 +126,17 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
                     if ($this->settings['enable_delivery']) {
                         // Delivery Confirmation
                         $delivery = new Paymentwall_GenerericApiObject('delivery');
-                        $response = $delivery->post($this->prepareDeliveryConfirmationData($order, $pingback->getReferenceId()));
+                        $response = $delivery->post($this->prepare_delivery_confirmation_data($order, $pingback->getReferenceId()));
                     }
 
                     $order->add_order_note(__('Paymentwall payment completed', 'woocommerce'));
                     $order->payment_complete($pingback->getReferenceId());
 
                 } elseif ($pingback->isCancelable()) {
-                    $order->update_status('cancelled', __('Reason: ' . $pingback->getParameter('reason'), 'woocommerce'));
+                    $order->update_status('cancelled', __('Reason: ' . $pingback->getParameter('reason'), 'paymentwall-for-woocommerce'));
                 }
 
-                die(DEFAULT_SUCCESS_PINGBACK_VALUE);
+                die(PW_DEFAULT_SUCCESS_PINGBACK_VALUE);
             } else {
                 die('Order Invalid!');
             }
@@ -154,18 +149,19 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * Process Ajax Request
      */
-    function ajaxResponse()
+    function ajax_response()
     {
-        global $woocommerce;
-        $order = new WC_Order(intval($_POST['order_id']));
+        $this->init_paymentwall_configs();
+
+        $order = wc_get_order(intval($_POST['order_id']));
         $return = array(
             'status' => false,
             'url' => ''
         );
 
         if ($order) {
-            if ($order->post_status == WC_ORDER_STATUS_PROCESSING) {
-                $woocommerce->cart->empty_cart();
+            if ($order->post_status == PW_ORDER_STATUS_PROCESSING) {
+                WC()->cart->empty_cart();
                 $return['status'] = true;
                 $return['url'] = get_permalink(wc_get_page_id('checkout')) . '/order-received/' . $order->id . '?key=' . $order->post->post_password;
             }
@@ -176,21 +172,21 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * Handle Action
      */
-    function handleAction()
+    function handle_action()
     {
         switch ($_GET['action']) {
             case 'ajax':
-                $this->ajaxResponse();
+                $this->ajax_response();
                 break;
             case 'ipn':
-                $this->ipnResponse();
+                $this->ipn_response();
                 break;
             default:
                 break;
         }
     }
 
-    function prepareDeliveryConfirmationData($order, $ref)
+    function prepare_delivery_confirmation_data($order, $ref)
     {
         return array(
             'payment_id' => $ref,
