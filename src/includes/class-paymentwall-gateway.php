@@ -10,18 +10,16 @@
  *
  */
 
-class Paymentwall_Gateway extends Paymentwall_Abstract
-{
+class Paymentwall_Gateway extends Paymentwall_Abstract {
     public $id = 'paymentwall';
     public $has_fields = true;
 
-    public function __construct()
-    {
+    public function __construct() {
         parent::__construct();
 
         $this->icon = PW_PLUGIN_URL . '/assets/images/icon.png';
-        $this->method_title = __('Paymentwall', 'paymentwall-for-woocommerce');
-        $this->method_description = __('Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', 'paymentwall-for-woocommerce');
+        $this->method_title = __('Paymentwall', PW_TEXT_DOMAIN);
+        $this->method_description = __('Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', PW_TEXT_DOMAIN);
         $this->title = $this->settings['title'];
         $this->notify_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'Paymentwall_Gateway', home_url('/')));
 
@@ -34,8 +32,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * Initial Paymentwall Configs
      */
-    function  init_paymentwall_configs()
-    {
+    function  init_paymentwall_configs() {
         Paymentwall_Config::getInstance()->set(array(
             'api_type' => Paymentwall_Config::API_GOODS,
             'public_key' => $this->settings['appkey'],
@@ -46,8 +43,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * @param $order_id
      */
-    function receipt_page($order_id)
-    {
+    function receipt_page($order_id) {
         $this->init_paymentwall_configs();
 
         $order = wc_get_order($order_id);
@@ -78,7 +74,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
 
         echo $this->get_template('widget.html', array(
             'orderId' => $order->id,
-            'title' => __('Please continue the purchase via Paymentwall using the widget below.', 'paymentwall-for-woocommerce'),
+            'title' => __('Please continue the purchase via Paymentwall using the widget below.', PW_TEXT_DOMAIN),
             'iframe' => $iframe,
             'baseUrl' => get_site_url(),
             'pluginUrl' => plugins_url('', __FILE__)
@@ -90,8 +86,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
      * @param int $order_id
      * @return array
      */
-    function process_payment($order_id)
-    {
+    function process_payment($order_id) {
         $order = wc_get_order($order_id);
 
         return array(
@@ -111,8 +106,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * Check the response from Paymentwall's Servers
      */
-    function ipn_response()
-    {
+    function ipn_response() {
         $this->init_paymentwall_configs();
         $pingback = new Paymentwall_Pingback($_GET, $_SERVER['REMOTE_ADDR']);
 
@@ -129,16 +123,26 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
                         $response = $delivery->post($this->prepare_delivery_confirmation_data($order, $pingback->getReferenceId()));
                     }
 
-                    $order->add_order_note(__('Paymentwall payment completed', 'woocommerce'));
+                    $order->add_order_note(__('Paymentwall payment completed', PW_TEXT_DOMAIN));
                     $order->payment_complete($pingback->getReferenceId());
 
                 } elseif ($pingback->isCancelable()) {
-                    $order->update_status('cancelled', __('Reason: ' . $pingback->getParameter('reason'), 'paymentwall-for-woocommerce'));
+                    $order->update_status('cancelled', __('Reason: ' . $pingback->getParameter('reason'), PW_TEXT_DOMAIN));
+                } else {
+                    // Support subscription pingback type
+                    if (paymentwall_subscription_enable()) {
+                        $subscription = wcs_get_subscriptions_for_order($order);
+                        $subscription = reset($subscription); // Do not support multi subscription
+
+                        if ($pingback->getType() == Paymentwall_Pingback::PINGBACK_TYPE_SUBSCRIPTION_CANCELLATION) {
+                            $subscription->update_status('cancelled', sprintf(__('The subscription %s cancelled', PW_TEXT_DOMAIN), $subscription->id));
+                        }
+                    }
                 }
 
                 die(PW_DEFAULT_SUCCESS_PINGBACK_VALUE);
             } else {
-                die('Order Invalid!');
+                die('The order is Invalid!');
             }
 
         } else {
@@ -149,8 +153,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * Process Ajax Request
      */
-    function ajax_response()
-    {
+    function ajax_response() {
         $this->init_paymentwall_configs();
 
         $order = wc_get_order(intval($_POST['order_id']));
@@ -172,8 +175,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * Handle Action
      */
-    function handle_action()
-    {
+    function handle_action() {
         switch ($_GET['action']) {
             case 'ajax':
                 $this->ajax_response();
@@ -186,8 +188,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
         }
     }
 
-    function prepare_delivery_confirmation_data($order, $ref)
-    {
+    function prepare_delivery_confirmation_data($order, $ref) {
         return array(
             'payment_id' => $ref,
             'type' => 'digital',

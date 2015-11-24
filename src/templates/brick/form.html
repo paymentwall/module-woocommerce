@@ -10,8 +10,7 @@
             <span class="required">*</span>
         </label>
         <input data-brick="card-number" id="card-number" class="input-text wc-credit-card-form-card-number"
-               name="brick[card_number]" type="text" placeholder="•••• •••• •••• ••••"
-               autocomplete="off"/>
+               type="text" placeholder="•••• •••• •••• ••••" autocomplete="off"/>
     </p>
 
     <p class="form-row form-row form-row-wide validate-required">
@@ -21,9 +20,9 @@
         </label>
         <span>
             <input data-brick="card-expiration-month" id="card-expiration-month" class="input-text"
-                   name="brick[exp_month]" type="text" placeholder="MM" size="2"/>
+                   type="text" placeholder="MM" size="2"/>
             / <input data-brick="card-expiration-year" id="card-expiration-year" class="input-text"
-                     name="brick[exp_year]" type="text" placeholder="YY" size="4"/>
+                     type="text" placeholder="YY" size="4"/>
         </span>
     </p>
 
@@ -33,9 +32,8 @@
             <span class="required">*</span>
         </label>
         <span>
-            <input data-brick="card-cvv" id="card-cvv" name="brick[card_cvv]"
-                   class="input-text wc-credit-card-form-card-cvc" type="text" placeholder="CVV"
-                   autocomplete="off"/>
+            <input data-brick="card-cvv" id="card-cvv" class="input-text wc-credit-card-form-card-cvc" type="text"
+                   placeholder="CVV" autocomplete="off"/>
         </span>
     </p>
 </div>
@@ -60,7 +58,15 @@
     });
 </script>
 <style>
-    #card-expiration-month{width: 80px;}
-    #card-expiration-year {width: 80px;}
-    #card-cvv{width: 80px;}
+    #card-expiration-month {
+        width: 80px;
+    }
+
+    #card-expiration-year {
+        width: 80px;
+    }
+
+    #card-cvv {
+        width: 80px;
+    }
 </style>
