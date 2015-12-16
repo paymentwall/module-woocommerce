@@ -11,6 +11,7 @@
  */
 
 class Paymentwall_Gateway extends Paymentwall_Abstract {
+
     public $id = 'paymentwall';
     public $has_fields = true;
 
@@ -48,7 +49,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
         $order = wc_get_order($order_id);
         $widget = new Paymentwall_Widget(
-            $order->billing_email,
+            empty($order->user_id) ? $_SERVER['REMOTE_ADDR'] : $order->user_id,
             $this->settings['widget'],
             array(
                 new Paymentwall_Product($order->id, $order->order_total, $order->order_currency, 'Order #' . $order->id)
@@ -65,7 +66,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
         $iframe = $widget->getHtmlCode(array(
             'width' => '100%',
-            'height' => 400,
+            'height' => '1000',
             'frameborder' => 0
         ));
 
@@ -107,44 +108,41 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * Check the response from Paymentwall's Servers
      */
     function ipn_response() {
-        $this->init_paymentwall_configs();
-        $pingback = new Paymentwall_Pingback($_GET, $_SERVER['REMOTE_ADDR']);
 
+        $order = wc_get_order($_GET['goodsid']);
+        if (!$order) {
+            die('The order is Invalid!');
+        }
+
+        $payment = wc_get_payment_gateway_by_order($order);
+        $payment->init_paymentwall_configs();
+
+        $pingback = new Paymentwall_Pingback($_GET, $_SERVER['REMOTE_ADDR']);
         if ($pingback->validate()) {
 
-            if ($order = wc_get_order($pingback->getProductId())) {
+            if ($pingback->isDeliverable()) {
 
-                if ($pingback->isDeliverable()) {
-
-                    // Call Delivery Confirmation API
-                    if ($this->settings['enable_delivery']) {
-                        // Delivery Confirmation
-                        $delivery = new Paymentwall_GenerericApiObject('delivery');
-                        $response = $delivery->post($this->prepare_delivery_confirmation_data($order, $pingback->getReferenceId()));
-                    }
-
-                    $order->add_order_note(__('Paymentwall payment completed', PW_TEXT_DOMAIN));
-                    $order->payment_complete($pingback->getReferenceId());
-
-                } elseif ($pingback->isCancelable()) {
-                    $order->update_status('cancelled', __('Reason: ' . $pingback->getParameter('reason'), PW_TEXT_DOMAIN));
-                } else {
-                    // Support subscription pingback type
-                    if (paymentwall_subscription_enable()) {
-                        $subscription = wcs_get_subscriptions_for_order($order);
-                        $subscription = reset($subscription); // Do not support multi subscription
-
-                        if ($pingback->getType() == Paymentwall_Pingback::PINGBACK_TYPE_SUBSCRIPTION_CANCELLATION) {
-                            $subscription->update_status('cancelled', sprintf(__('The subscription %s cancelled', PW_TEXT_DOMAIN), $subscription->id));
-                        }
-                    }
+                if ($order->get_status() == PW_ORDER_STATUS_PROCESSING) {
+                    die(PW_DEFAULT_SUCCESS_PINGBACK_VALUE);
                 }
 
-                die(PW_DEFAULT_SUCCESS_PINGBACK_VALUE);
-            } else {
-                die('The order is Invalid!');
+                // Call Delivery Confirmation API
+                if ($this->settings['enable_delivery']) {
+                    // Delivery Confirmation
+                    $delivery = new Paymentwall_GenerericApiObject('delivery');
+                    $response = $delivery->post($this->prepare_delivery_confirmation_data($order, $pingback->getReferenceId()));
+                }
+
+                $order->add_order_note(__('Payment approved by Paymentwall - Transaction Id: ' . $pingback->getReferenceId(), PW_TEXT_DOMAIN));
+                $order->payment_complete($pingback->getReferenceId());
+
+            } elseif ($pingback->isCancelable()) {
+                $order->cancel_order(__('Reason: ' . $pingback->getParameter('reason'), PW_TEXT_DOMAIN));
+            } elseif ($pingback->isUnderReview()) {
+                $order->update_status('on-hold');
             }
 
+            die(PW_DEFAULT_SUCCESS_PINGBACK_VALUE);
         } else {
             die($pingback->getErrorSummary());
         }

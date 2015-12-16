@@ -11,10 +11,12 @@
  */
 
 class Paymentwall_Brick extends Paymentwall_Abstract {
+
     public $id = 'brick';
     public $has_fields = true;
 
     public function __construct() {
+
         parent::__construct();
 
         $this->title = $this->settings['title'];
@@ -30,12 +32,24 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
 
     /**
      * Initial Paymentwall Configs
+     * For pingback request
      */
     public function  init_paymentwall_configs() {
         Paymentwall_Config::getInstance()->set(array(
             'api_type' => Paymentwall_Config::API_GOODS,
-            'public_key' => $this->settings['test_mode'] ? $this->settings['t_publickey'] : $this->settings['publickey'],
-            'private_key' => $this->settings['test_mode'] ? $this->settings['t_privatekey'] : $this->settings['privatekey'],
+            'public_key' => $this->settings['projectkey'],
+            'private_key' => $this->settings['secretkey'],
+        ));
+    }
+
+    /**
+     * Initial Brick Configs
+     */
+    public function  init_brick_configs() {
+        Paymentwall_Config::getInstance()->set(array(
+            'api_type' => Paymentwall_Config::API_GOODS,
+            'public_key' => $this->settings['publickey'],
+            'private_key' => $this->settings['privatekey'],
         ));
     }
 
@@ -59,8 +73,8 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
      * @return array
      */
     public function process_payment($order_id) {
-        $this->init_paymentwall_configs();
 
+        $this->init_brick_configs();
         $order = wc_get_order($order_id);
 
         try {
@@ -79,6 +93,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
      * @throws Exception
      */
     function prepare_card_info($order) {
+
         if (!isset($_POST['brick'])) {
             throw new Exception("Payment Invalid!");
         }
@@ -123,7 +138,11 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         $charge = new Paymentwall_Charge();
         $charge->create(array_merge(
             $this->prepare_user_profile_data($order), // for User Profile API
-            $this->prepare_card_info($order)
+            $this->prepare_card_info($order),
+            array(
+                'custom[integration_module]' => 'woocommerce',
+                'uid' => empty($order->user_id) ? $_SERVER['REMOTE_ADDR'] : $order->user_id
+            )
         ));
         $response = $charge->getPublicData();
 
@@ -135,14 +154,12 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
 
                 // Payment complete
                 $order->payment_complete($charge->getId());
-
-                WC_Subscriptions_Manager::activate_subscriptions_for_order($order);
-
-                $return['result'] = 'success';
-                $return['redirect'] = $this->get_return_url($order);
             } elseif ($charge->isUnderReview()) {
                 $order->update_status('on-hold');
             }
+
+            $return['result'] = 'success';
+            $return['redirect'] = $this->get_return_url($order);
 
             // Clear shopping cart
             WC()->cart->empty_cart();
