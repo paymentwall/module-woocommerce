@@ -13,7 +13,6 @@
 class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
 
     public function __construct() {
-
         $this->supports = array(
             'products',
             'subscriptions'
@@ -31,7 +30,6 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
         parent::__construct();
 
         add_action('woocommerce_subscription_cancelled_' . $this->id, array($this, 'cancel_subscription_action'));
-
         add_filter('woocommerce_subscription_payment_gateway_supports', array($this, 'add_feature_support_for_subscription'), 10, 3);
     }
 
@@ -43,8 +41,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
      */
     public function process_payment($order_id) {
 
-        $this->init_paymentwall_configs();
-
+        $this->init_brick_configs();
         $order = wc_get_order($order_id);
 
         try {
@@ -72,23 +69,35 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
      */
     public function process_subscription_payment($order, $subscription) {
 
+        $this->init_brick_configs();
         $return = array(
             'result' => 'fail',
             'redirect' => ''
         );
 
-        $subscription_data = $this->prepare_subscription_data($order, $subscription);
         $paymentwall_subscription = new Paymentwall_Subscription();
-        $paymentwall_subscription->create($subscription_data);
+        $paymentwall_subscription->create(array_merge(
+            $this->prepare_subscription_data($order, $subscription),
+            $this->prepare_user_profile_data($order),
+            array(
+                'custom[integration_module]' => 'woocommerce',
+                'uid' => empty($order->user_id) ? $_SERVER['REMOTE_ADDR'] : $order->user_id
+            )
+        ));
         $response = json_decode($paymentwall_subscription->GetRawResponseData());
 
         if ($paymentwall_subscription->isSuccessful() && $response->object == 'subscription') {
 
-            // Add order note
-            $order->add_order_note(sprintf(__('Brick subscription payment approved (ID: %s)', PW_TEXT_DOMAIN), $response->id));
+            if ($paymentwall_subscription->isActive()) {
+                // Add order note
+                $order->add_order_note(sprintf(__('Brick subscription payment approved (ID: %s)', PW_TEXT_DOMAIN), $response->id));
 
-            // Payment complete
-            $order->payment_complete($response->id);
+                // Payment complete
+                $order->payment_complete($response->id);
+            } else {
+                $order->update_status('on-hold');
+            }
+
 
             $return['result'] = 'success';
             $return['redirect'] = $this->get_return_url($order);
@@ -96,8 +105,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             // Clear shopping cart
             WC()->cart->empty_cart();
         } else {
-            $errors = json_decode($response, true);
-            wc_add_notice(__($errors['error']['message']), 'error');
+            wc_add_notice(__($response->error), 'error');
         }
 
         return $return;
@@ -198,7 +206,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
     public function cancel_subscription_action($subscription) {
         $this->init_paymentwall_configs();
 
-        if($subscription_key = $this->get_transaction_key($subscription->order->id)){
+        if ($subscription_key = $this->get_transaction_key($subscription->order->id)) {
             $subscription_api = new Paymentwall_Subscription($subscription_key);
             $subscription_api->cancel();
         }

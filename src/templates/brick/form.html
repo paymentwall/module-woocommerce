@@ -45,7 +45,6 @@
 
     // Brick manipulate the checkout
     jQuery('form.checkout').unbind('checkout_place_order_{{payment_id}}').on('checkout_place_order_{{payment_id}}', function (e) {
-        e.preventDefault();
 
         // Check token created
         if (jQuery('#brick-get-token-success').val() == '1') {
