@@ -49,7 +49,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
         $order = wc_get_order($order_id);
         $widget = new Paymentwall_Widget(
-            empty($order->user_id) ? $_SERVER['REMOTE_ADDR'] : $order->user_id,
+            empty($order->user_id) ? $order->billing_email : $order->user_id,
             $this->settings['widget'],
             array(
                 new Paymentwall_Product($order->id, $order->order_total, $order->order_currency, 'Order #' . $order->id)
@@ -58,7 +58,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 array(
                     'email' => $order->billing_email,
                     'integration_module' => 'woocommerce',
-                    'test_mode' => $this->settings['test_mode']
+                    'test_mode' => $this->settings['test_mode'],
+                    'client_ip' => $_SERVER['REMOTE_ADDR'],
                 ),
                 $this->prepare_user_profile_data($order)
             )
