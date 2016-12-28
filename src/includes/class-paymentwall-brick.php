@@ -178,8 +178,9 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
 
     public function confirm_3ds() {
         $dataSecure = WC()->session->get('3ds');
+        $autoSubmit = $this->settings['test_mode'] ? "<script>document.forms[0].submit();</script>" : '';
         echo $this->get_template('brick/3ds.html', array(
-            '3ds' => $dataSecure['formHTML'] . "<script>document.forms[0].submit();</script>"
+            '3ds' => $dataSecure['formHTML'] . $autoSubmit
         ));
     }
 
