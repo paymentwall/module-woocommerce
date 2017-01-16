@@ -20,6 +20,7 @@ function paymentListener(orderId, baseUrl) {
 
 var Brick_Payment = {
     brick: null,
+    form3Ds : '',
     createBrick: function (public_key) {
         this.brick = new Brick({
             public_key: public_key,
@@ -34,16 +35,66 @@ var Brick_Payment = {
             card_cvv: jQuery('#card-cvv').val()
         }, function (response) {
             if (response.type == 'Error') {
-                // handle errors
-                alert("Brick error(s):\n" + " - " + (typeof response.error === 'string' ? response.error : response.error.join("\n - ")));
+                var errors = "Brick error(s):<br/>" + " - " + (typeof response.error === 'string' ? response.error : response.error.join("<br/> - "));
+                Brick_Payment.showWaiting(errors, 'error');
             } else {
                 jQuery('#brick-token').val(response.token);
                 jQuery('#brick-fingerprint').val(Brick.getFingerprint());
                 jQuery('#brick-get-token-success').val(1);
 
-                // Async: recall form submit
-                jQuery('form.checkout').submit();
+                Brick_Payment.sendPaymentRequest();
+                window.addEventListener("message", Brick_Payment.threeDSecureMessageHandle, false);
             }
         });
+    }, openConfirm3ds: function () {
+        var win = window.open("", "Brick: Verify 3D secure", "toolbar=no, directories=no, status=no, menubar=no, scrollbars=yes, resizable=no, width=1024, height=720");
+        var popup = win.document.body;
+        jQuery(popup).append(Brick_Payment.form3Ds);
+        win.document.forms[0].submit();
+        return false;
+    }, threeDSecureMessageHandle: function (event) {
+        var origin = event.origin || event.originalEvent.origin;
+        if (origin !== "https://api.paymentwall.com") {
+            return;
+        }
+        Brick_Payment.showWaiting();
+        var brickData = JSON.parse(event.data);
+        if (brickData && brickData.event == '3dSecureComplete') {
+            jQuery('#hidden-brick-secure-token').val(brickData.data.secure_token);
+            jQuery('#hidden-brick-charge-id').val(brickData.data.charge_id);
+            Brick_Payment.sendPaymentRequest();
+        }
+    },
+    sendPaymentRequest: function () {
+        jQuery.ajax({
+            type : 'POST',
+            url  : '?wc-ajax=checkout',
+            data : jQuery('form.checkout').serialize(),
+            dataType: 'json',
+            encode  : true,
+            beforeSend: function () {
+                Brick_Payment.showWaiting();
+            },
+            success: function (response) {
+                if (response.result == 'success') {
+                    Brick_Payment.showWaiting(response.message);
+                    window.location.href = response.redirect;
+                } else if (response.result == 'secure') {
+                    Brick_Payment.form3Ds = response.secure;
+                    var requireConfirm = "Please verify 3D-secure to continue checkout. <a href='javascript:void(0)' onclick='Brick_Payment.openConfirm3ds()'>Click here !</a>";
+                    Brick_Payment.showWaiting(requireConfirm);
+                } else {
+                    jQuery('#brick-errors').html(response.messages);
+                }
+            }
+        });
+    }, showWaiting: function (message, type) {
+        var img = '<img src="' + jQuery('#plugin_url').val() + '/assets/images/loading.gif">';
+        message = (message != undefined) ? message : img + ' Please wait while order is being processed...';
+        type = (type != undefined) ? type : 'message'
+        var notification = '<ul class="woocommerce-'+type+'"><li> ' + message + ' </li></ul>';
+
+        jQuery('#brick-errors').show();
+        jQuery('#brick-errors').html(notification);
     }
 };

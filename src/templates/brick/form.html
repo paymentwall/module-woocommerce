@@ -1,8 +1,13 @@
 <script src="https://api.paymentwall.com/brick/brick.1.4.js"></script>
 <div class="paymentwall-brick-form">
+    <div id="brick-errors" style="display: none;"></div>
+    <br/>
     <input type="hidden" name="brick[token]" id="brick-token"/>
     <input type="hidden" name="brick[fingerprint]" id="brick-fingerprint"/>
     <input type="hidden" name="brick[success]" id="brick-get-token-success" value="0"/>
+    <input type="hidden" name="brick[cc_brick_charge_id]" id="hidden-brick-charge-id"/>
+    <input type="hidden" name="brick[cc_brick_secure_token]" id="hidden-brick-secure-token"/>
+    <input type="hidden" name="plugin_url" id="plugin_url" value="{{plugin_url}}"/>
 
     <p class="form-row form-row form-row-wide validate-required">
         <label>
@@ -43,6 +48,7 @@
         setTimeout(function() {
             Brick_Payment.createBrick('{{public_key}}');
         }, 3000);
+
         // Brick manipulate the checkout
         jQuery('form.checkout').unbind('checkout_place_order_{{payment_id}}').on('checkout_place_order_{{payment_id}}', function (e) {
             // Check token created
@@ -50,10 +56,10 @@
                 jQuery('#brick-get-token-success').val(0)
                 return true;
             }
-
             Brick_Payment.brickTokenizeCard();
             return false;
         });
+
     });
 </script>
 <style>

@@ -24,14 +24,14 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         $this->method_description = __('Brick provides in-app and fully customizable credit card processing for merchants around the world. With Brick connected to banks in different countries, Paymentwall has created the best global credit card processing solution in the world to help you process in local currency.', PW_TEXT_DOMAIN);
 
         // Our Actions
-        add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
         add_filter('woocommerce_after_checkout_validation', array($this, 'brick_fields_validation'));
+        add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
-        if (!empty($_GET['_3ds'])) {
-            $this->check3ds($_GET['_3ds']);
+        if(!empty(WC()->session) && $orderId = WC()->session->get('orderId')) {
+            $result = $this->process_payment($orderId);
+            die(json_encode($result));
         }
     }
-
 
     /**
      * Initial Paymentwall Configs
@@ -65,7 +65,8 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
             'public_key' => $this->settings['publickey'],
             'entry_card_number' => __("Card number", PW_TEXT_DOMAIN),
             'entry_card_expiration' => __("Card expiration", PW_TEXT_DOMAIN),
-            'entry_card_cvv' => __("Card CVV", PW_TEXT_DOMAIN)
+            'entry_card_cvv' => __("Card CVV", PW_TEXT_DOMAIN),
+            'plugin_url' => PW_PLUGIN_URL
         ));
     }
 
@@ -101,15 +102,22 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
 
         $brick = $_POST['brick'];
 
-        return array(
+        $data = array(
             'token' => $brick['token'],
+            'fingerprint' => $brick['fingerprint'],
             'amount' => $order->get_total(),
             'currency' => $order->get_order_currency(),
             'email' => $order->billing_email,
             'plan' => $order->id,
-            'fingerprint' => $brick['fingerprint'],
             'description' => sprintf(__('%s - Order #%s', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
         );
+        if (!empty($brick['cc_brick_secure_token'])) {
+            $data['secure_token'] = $brick['cc_brick_secure_token'];
+        }
+        if (!empty($brick['cc_brick_charge_id'])) {
+            $data['charge_id'] = $brick['cc_brick_charge_id'];
+        }
+        return $data;
     }
 
     /**
@@ -136,108 +144,55 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         );
         $cardInfo = $this->prepare_card_info($order);
 
-        $wc_cart = new WC_Cart();
-        $checkout_url = $wc_cart->get_checkout_url();
-
         $charge = new Paymentwall_Charge();
         $charge->create(array_merge(
             $this->prepare_user_profile_data($order), // for User Profile API
             $cardInfo,
-            $this->get_extra_data($order, $checkout_url)
+            $this->get_extra_data($order)
         ));
         $response = $charge->getPublicData();
         $responseData = json_decode($charge->getRawResponseData(), true);
 
         if ($charge->isSuccessful() && empty($responseData['secure'])) {
             $return['result'] = 'success';
-            $return['redirect'] = $this->process_success($order, $charge);
+            $return['redirect'] = $this->process_success($order, $charge, $message);
+            $return['message'] = $message;
         } elseif (!empty($responseData['secure'])) {
-            $secureData = array(
-                'formHTML' => $responseData['secure']['formHTML'],
-                'cardInfo' => $cardInfo,
-                'order' => $order,
-            );
-            WC()->session->set('3ds', $secureData);
-            $return['result'] = 'success';
-            $return['redirect'] = $checkout_url . '?_3ds=confirm';
+            WC()->session->set('orderId', $order->id);
+            $return['result'] = 'secure';
+            $return['secure'] = $responseData['secure']['formHTML'];
+            die(json_encode($return));
         } else {
             $errors = json_decode($response, true);
             wc_add_notice(__($errors['error']['message']), 'error');
         }
-
         return $return;
     }
 
-    public function get_extra_data($order, $checkout_url) {
+    public function get_extra_data($order) {
         return array(
             'custom[integration_module]' => 'woocomerce',
-            'uid' => empty($order->user_id) ? $_SERVER['REMOTE_ADDR'] : $order->user_id,
-            'secure_redirect_url' => $checkout_url . '?_3ds=process'
+            'uid' => empty($order->user_id) ? $_SERVER['REMOTE_ADDR'] : $order->user_id
         );
     }
 
-    public function confirm_3ds() {
-        $dataSecure = WC()->session->get('3ds');
-        $autoSubmit = $this->settings['test_mode'] ? "<script>document.forms[0].submit();</script>" : '';
-        echo $this->get_template('brick/3ds.html', array(
-            '3ds' => $dataSecure['formHTML'] . $autoSubmit
-        ));
-    }
-
-    public function process_3ds() {
-        $charge = new Paymentwall_Charge();
-
-        $secureData = WC()->session->get('3ds');
-        $order = $secureData['order'];
-
-        $cardInfo = $secureData['cardInfo'];
-        if (!empty($_POST['brick_charge_id']) && !empty($_POST['brick_secure_token'])) {
-            $cardInfo['charge_id'] = $_POST['brick_charge_id'];
-            $cardInfo['secure_token'] = $_POST['brick_secure_token'];
-        }
-
-        $charge->create($cardInfo);
-        WC()->session->set('3ds', null);
-
-        if ($charge->isSuccessful()) {
-            $thanksPage = $this->process_success($order, $charge);
-            wp_redirect($thanksPage);
-        } else {
-            $order->update_status('cancelled');
-            wc_add_notice(__("Confirm 3d secure has been cancelled"), 'error');
-            WC()->cart->empty_cart();
-        }
-    }
-
-    public function process_success($order, $charge) {
+    public function process_success($order, $charge, &$message) {
         if ($charge->isCaptured()) {
             // Add order note
             $order->add_order_note(sprintf(
                 __('Brick payment approved (ID: %s)', PW_TEXT_DOMAIN),
-                $charge->getId())
-            );
+                $charge->getId()));
             // Payment complete
             $order->payment_complete($charge->getId());
+            $message = "Your order has been received !";
         } elseif ($charge->isUnderReview()) {
             $order->update_status('on-hold');
+            $message = 'Your order is under review !';
         }
 
         $thanksPage = $this->get_return_url($order);
+        WC()->session->set('orderId', null);
         WC()->cart->empty_cart();
         return $thanksPage;
-    }
-
-    public function check3ds($_3ds) {
-        switch ($_3ds) {
-            case 'confirm':
-                $this->confirm_3ds();
-                break;
-            case 'process':
-                $this->init_brick_configs();
-                $this->process_3ds();
-                break;
-            default:
-                break;
-        }
     }
 }

@@ -60,4 +60,14 @@ return array(
         ),
         'default' => '1'
     ),
+    'enable_delivery' => array(
+        'title' => __('Enable Delivery Confirmation API', PW_TEXT_DOMAIN),
+        'type' => 'select',
+        'description' => '',
+        'options' => array(
+            '1' => 'Yes',
+            '0' => 'No'
+        ),
+        'default' => '1'
+    )
 );
