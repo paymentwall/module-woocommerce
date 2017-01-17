@@ -1,13 +1,16 @@
 <script src="https://api.paymentwall.com/brick/brick.1.4.js"></script>
 <div class="paymentwall-brick-form">
+    <div id="brick-loading" style="display: none;">
+        <ul class="woocommerce-message">
+            <li><img src="{{plugin_url}}/assets/images/loading.gif"> Please wait while order is being processed...</li>
+        </ul>
+    </div>
     <div id="brick-errors" style="display: none;"></div>
-    <br/>
     <input type="hidden" name="brick[token]" id="brick-token"/>
     <input type="hidden" name="brick[fingerprint]" id="brick-fingerprint"/>
     <input type="hidden" name="brick[success]" id="brick-get-token-success" value="0"/>
     <input type="hidden" name="brick[cc_brick_charge_id]" id="hidden-brick-charge-id"/>
     <input type="hidden" name="brick[cc_brick_secure_token]" id="hidden-brick-secure-token"/>
-    <input type="hidden" name="plugin_url" id="plugin_url" value="{{plugin_url}}"/>
 
     <p class="form-row form-row form-row-wide validate-required">
         <label>

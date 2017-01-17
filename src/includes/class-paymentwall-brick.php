@@ -27,7 +27,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         add_filter('woocommerce_after_checkout_validation', array($this, 'brick_fields_validation'));
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
-        if(!empty(WC()->session) && $orderId = WC()->session->get('orderId')) {
+        if(!empty(WC()->session) && isset($_POST['brick']) && $orderId = WC()->session->get('orderId')) {
             $result = $this->process_payment($orderId);
             die(json_encode($result));
         }
@@ -79,7 +79,6 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
     public function process_payment($order_id) {
         $this->init_brick_configs();
         $order = wc_get_order($order_id);
-
         try {
             $return = $this->process_standard_payment($order);
         } catch (Exception $e) {
@@ -99,9 +98,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         if (!isset($_POST['brick'])) {
             throw new Exception("Payment Invalid!");
         }
-
         $brick = $_POST['brick'];
-
         $data = array(
             'token' => $brick['token'],
             'fingerprint' => $brick['fingerprint'],
@@ -138,18 +135,16 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
      * @throws Exception
      */
     public function process_standard_payment($order) {
-        $return = array(
-            'result' => 'fail',
-            'redirect' => ''
-        );
+        $return = array();
         $cardInfo = $this->prepare_card_info($order);
-
         $charge = new Paymentwall_Charge();
+
         $charge->create(array_merge(
             $this->prepare_user_profile_data($order), // for User Profile API
             $cardInfo,
             $this->get_extra_data($order)
         ));
+
         $response = $charge->getPublicData();
         $responseData = json_decode($charge->getRawResponseData(), true);
 
@@ -165,6 +160,8 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         } else {
             $errors = json_decode($response, true);
             wc_add_notice(__($errors['error']['message']), 'error');
+            $return['result'] = 'error';
+            $return['message'] = $errors['error']['message'];
         }
         return $return;
     }
@@ -172,7 +169,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
     public function get_extra_data($order) {
         return array(
             'custom[integration_module]' => 'woocomerce',
-            'uid' => empty($order->user_id) ? $_SERVER['REMOTE_ADDR'] : $order->user_id
+            'uid' => empty($order->user_id) ? $order->billing_email : $order->user_id
         );
     }
 

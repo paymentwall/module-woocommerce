@@ -36,7 +36,7 @@ var Brick_Payment = {
         }, function (response) {
             if (response.type == 'Error') {
                 var errors = "Brick error(s):<br/>" + " - " + (typeof response.error === 'string' ? response.error : response.error.join("<br/> - "));
-                Brick_Payment.showWaiting(errors, 'error');
+                Brick_Payment.showNotification(errors, 'error');
             } else {
                 jQuery('#brick-token').val(response.token);
                 jQuery('#brick-fingerprint').val(Brick.getFingerprint());
@@ -57,7 +57,7 @@ var Brick_Payment = {
         if (origin !== "https://api.paymentwall.com") {
             return;
         }
-        Brick_Payment.showWaiting();
+        Brick_Payment.showLoading();
         var brickData = JSON.parse(event.data);
         if (brickData && brickData.event == '3dSecureComplete') {
             jQuery('#hidden-brick-secure-token').val(brickData.data.secure_token);
@@ -67,34 +67,34 @@ var Brick_Payment = {
     },
     sendPaymentRequest: function () {
         jQuery.ajax({
-            type : 'POST',
-            url  : '?wc-ajax=checkout',
-            data : jQuery('form.checkout').serialize(),
+            type: 'POST',
+            url: '?wc-ajax=checkout',
+            data: jQuery('form.checkout').serialize(),
             dataType: 'json',
-            encode  : true,
+            encode: true,
             beforeSend: function () {
-                Brick_Payment.showWaiting();
+                Brick_Payment.showLoading();
             },
             success: function (response) {
                 if (response.result == 'success') {
-                    Brick_Payment.showWaiting(response.message);
+                    Brick_Payment.showNotification(response.message);
                     window.location.href = response.redirect;
                 } else if (response.result == 'secure') {
                     Brick_Payment.form3Ds = response.secure;
                     var requireConfirm = "Please verify 3D-secure to continue checkout. <a href='javascript:void(0)' onclick='Brick_Payment.openConfirm3ds()'>Click here !</a>";
-                    Brick_Payment.showWaiting(requireConfirm);
+                    Brick_Payment.showNotification(requireConfirm);
                 } else {
-                    jQuery('#brick-errors').html(response.messages);
+                    Brick_Payment.showNotification(response.message, 'error');
                 }
             }
         });
-    }, showWaiting: function (message, type) {
-        var img = '<img src="' + jQuery('#plugin_url').val() + '/assets/images/loading.gif">';
-        message = (message != undefined) ? message : img + ' Please wait while order is being processed...';
-        type = (type != undefined) ? type : 'message'
-        var notification = '<ul class="woocommerce-'+type+'"><li> ' + message + ' </li></ul>';
-
+    }, showNotification: function (message, type) {
+        jQuery('#brick-loading').hide();
+        type = (type != undefined) ? type : 'message';
+        jQuery('#brick-errors').html('<ul class="woocommerce-' + type + '"><li> ' + message + ' </li></ul>');
         jQuery('#brick-errors').show();
-        jQuery('#brick-errors').html(notification);
+    }, showLoading: function () {
+        jQuery('#brick-errors').hide();
+        jQuery('#brick-loading').show();
     }
 };
