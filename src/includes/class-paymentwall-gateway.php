@@ -58,8 +58,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 array(
                     'email' => $order->billing_email,
                     'integration_module' => 'woocommerce',
-                    'test_mode' => $this->settings['test_mode'],
-                    'client_ip' => $_SERVER['REMOTE_ADDR'],
+                    'test_mode' => $this->settings['test_mode']
                 ),
                 $this->prepare_user_profile_data($order)
             )
