@@ -33,7 +33,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     /**
      * Initial Paymentwall Configs
      */
-    function init_configs($isPingback) {
+    function init_configs($isPingback = false) {
         Paymentwall_Config::getInstance()->set(array(
             'api_type' => Paymentwall_Config::API_GOODS,
             'public_key' => $this->settings['appkey'],
