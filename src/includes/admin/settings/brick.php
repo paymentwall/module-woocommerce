@@ -26,12 +26,6 @@ return array(
         'description' => __('This controls the description which the user sees during checkout.', PW_TEXT_DOMAIN),
         'default' => __("Pay via Brick Credit Card Processing.", PW_TEXT_DOMAIN)
     ),
-    'projectkey' => array(
-        'title' => __('Project Key', PW_TEXT_DOMAIN),
-        'type' => 'text',
-        'description' => __('Your Paymentwall Key', PW_TEXT_DOMAIN),
-        'default' => ''
-    ),
     'secretkey' => array(
         'title' => __('Secret Key', PW_TEXT_DOMAIN),
         'type' => 'text',
@@ -58,6 +52,16 @@ return array(
             '0' => 'No',
             '1' => 'Yes'
         ),
-        'default' => '1'
+        'default' => '0'
     ),
+    'enable_delivery' => array(
+        'title' => __('Enable Delivery Confirmation API', PW_TEXT_DOMAIN),
+        'type' => 'select',
+        'description' => '',
+        'options' => array(
+            '1' => 'Yes',
+            '0' => 'No'
+        ),
+        'default' => '1'
+    )
 );

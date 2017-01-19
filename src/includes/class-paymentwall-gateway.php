@@ -33,7 +33,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     /**
      * Initial Paymentwall Configs
      */
-    function  init_paymentwall_configs() {
+    function init_configs($isPingback = false) {
         Paymentwall_Config::getInstance()->set(array(
             'api_type' => Paymentwall_Config::API_GOODS,
             'public_key' => $this->settings['appkey'],
@@ -45,7 +45,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * @param $order_id
      */
     function receipt_page($order_id) {
-        $this->init_paymentwall_configs();
+        $this->init_configs();
 
         $order = wc_get_order($order_id);
         $widget = new Paymentwall_Widget(
@@ -58,8 +58,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 array(
                     'email' => $order->billing_email,
                     'integration_module' => 'woocommerce',
-                    'test_mode' => $this->settings['test_mode'],
-                    'client_ip' => $_SERVER['REMOTE_ADDR'],
+                    'test_mode' => $this->settings['test_mode']
                 ),
                 $this->prepare_user_profile_data($order)
             )
@@ -116,7 +115,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         }
 
         $payment = wc_get_payment_gateway_by_order($order);
-        $payment->init_paymentwall_configs();
+        $payment->init_configs(true);
 
         $pingback = new Paymentwall_Pingback($_GET, $_SERVER['REMOTE_ADDR']);
         if ($pingback->validate()) {
@@ -153,7 +152,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * Process Ajax Request
      */
     function ajax_response() {
-        $this->init_paymentwall_configs();
+        $this->init_configs();
 
         $order = wc_get_order(intval($_POST['order_id']));
         $return = array(

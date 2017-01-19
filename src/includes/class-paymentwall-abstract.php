@@ -11,7 +11,7 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
         $this->init_form_fields();
     }
 
-    abstract public function init_paymentwall_configs();
+    abstract public function init_configs($isPingback);
 
     protected function get_template($templateFileName, $data = array())
     {
