@@ -89,8 +89,8 @@ var Brick_Payment = {
             }
         });
     }, showNotification: function (message, type) {
-        jQuery('#brick-loading').hide();
         type = (type != undefined) ? type : 'message';
+        jQuery('#brick-loading').hide();
         jQuery('#brick-errors').html('<ul class="woocommerce-' + type + '"><li> ' + message + ' </li></ul>');
         jQuery('#brick-errors').show();
     }, showLoading: function () {

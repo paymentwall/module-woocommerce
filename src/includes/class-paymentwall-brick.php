@@ -35,25 +35,20 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
 
     /**
      * Initial Paymentwall Configs
-     * For pingback request
      */
-    public function init_paymentwall_configs() {
-        Paymentwall_Config::getInstance()->set(array(
-            'api_type' => Paymentwall_Config::API_GOODS,
-            'public_key' => $this->settings['projectkey'],
-            'private_key' => $this->settings['secretkey'],
-        ));
-    }
-
-    /**
-     * Initial Brick Configs
-     */
-    public function init_brick_configs() {
-        Paymentwall_Config::getInstance()->set(array(
-            'api_type' => Paymentwall_Config::API_GOODS,
-            'public_key' => $this->settings['publickey'],
-            'private_key' => $this->settings['privatekey'],
-        ));
+    public function init_configs($isPingback = false) {
+        if ($isPingback) {
+            Paymentwall_Config::getInstance()->set(array(
+                'api_type' => Paymentwall_Config::API_GOODS,
+                'private_key' => $this->settings['secretkey']
+            ));
+        } else {
+            Paymentwall_Config::getInstance()->set(array(
+                'api_type' => Paymentwall_Config::API_GOODS,
+                'public_key' => $this->settings['publickey'],
+                'private_key' => $this->settings['privatekey']
+            ));
+        }
     }
 
     /**
@@ -77,7 +72,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
      * @return array
      */
     public function process_payment($order_id) {
-        $this->init_brick_configs();
+        $this->init_configs();
         $order = wc_get_order($order_id);
         try {
             $return = $this->process_standard_payment($order);

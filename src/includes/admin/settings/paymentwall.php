@@ -52,7 +52,7 @@ return array(
             '0' => 'No',
             '1' => 'Yes'
         ),
-        'default' => '1'
+        'default' => '0'
     ),
     'enable_delivery' => array(
         'title' => __('Enable Delivery Confirmation API', PW_TEXT_DOMAIN),
