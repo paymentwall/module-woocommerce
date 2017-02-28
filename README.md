@@ -1,4 +1,4 @@
-#About WooCommerce module
+# About WooCommerce module
 Paymentwall module for WordPress WooCommerce.
 
 ### Requirement
@@ -6,7 +6,7 @@ Paymentwall module for WordPress WooCommerce.
 * WordPress v4.0 or greater
 * PHP 5.3 or greater
 
-#Installation
+# Installation
 To install Paymentwall WooCommerce module, please follow the [instructions](https://www.paymentwall.com/en/documentation/WooCommerce/1409).
 
 After cloning the repository don't forget to install Paymentwall PHP API library (**required**):
