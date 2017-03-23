@@ -109,7 +109,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      */
     function ipn_response() {
 
-        $original_order = $_GET['goodsid'];
+        $original_order_id = $_GET['goodsid'];
         $order = wc_get_order($_GET['goodsid']);
 
         if (!$order) {
@@ -137,29 +137,27 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     $response = $delivery->post($this->prepare_delivery_confirmation_data($order, $pingback->getReferenceId()));
                 }
 
-                $subscriptions = wcs_get_subscriptions_for_order( $original_order, array( 'order_type' => 'parent' ) );
+                $subscriptions = wcs_get_subscriptions_for_order( $original_order_id, array( 'order_type' => 'parent' ) );
                 $subscription  = array_shift( $subscriptions );
-                $subscription_key = get_post_meta($original_order, '_subscription_id');
-                if(isset($_GET['initial_ref']) && $_GET['initial_ref'] && (isset($subscription_key[0]) && $subscription_key[0] == $_GET['initial_ref'] || 1==1) ) {
+                $subscription_key = get_post_meta($original_order_id, '_subscription_id');
+                if (isset($_GET['initial_ref']) && $_GET['initial_ref'] && (isset($subscription_key[0]) && $subscription_key[0] == $_GET['initial_ref'])) {
                     $subscription->update_status('on-hold');
                     $subscription->add_order_note(__('Subscription renewal payment due: Status changed from Active to On hold.', PW_TEXT_DOMAIN));
                     $new_order = wcs_create_renewal_order( $subscription );
                     $new_order->add_order_note(__('Payment approved by Paymentwall - Transaction Id: ' . $_GET['ref'], PW_TEXT_DOMAIN));
-                    update_post_meta( $new_order->id, '_subscription_id', $_GET['ref']);
-                    $new_order->set_payment_method( $subscription->payment_gateway );
+                    update_post_meta($new_order->id, '_subscription_id', $_GET['ref']);
+                    $new_order->set_payment_method($subscription->payment_gateway);
                     $new_order->payment_complete($_GET['ref']);
                 } else {
                     $order->add_order_note(__('Payment approved by Paymentwall - Transaction Id: ' . $pingback->getReferenceId(), PW_TEXT_DOMAIN));
                     $order->payment_complete($pingback->getReferenceId());
-
-
                 }
-                $action_args = array( 'subscription_id' => $subscription->id );
+                $action_args = array('subscription_id' => $subscription->id);
                 $hooks = array(
                     'woocommerce_scheduled_subscription_payment',
                 );
                 foreach($hooks as $hook) {
-                    $result = wc_unschedule_action( $hook, $action_args );
+                    $result = wc_unschedule_action($hook, $action_args);
                 }
             } elseif ($pingback->isCancelable()) {
                 $order->cancel_order(__('Reason: ' . $pingback->getParameter('reason'), PW_TEXT_DOMAIN));
