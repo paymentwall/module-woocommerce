@@ -40,7 +40,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         if ($isPingback) {
             Paymentwall_Config::getInstance()->set(array(
                 'api_type' => Paymentwall_Config::API_GOODS,
-                'private_key' => $this->settings['secretkey']
+                'private_key' => $this->settings['test_mode'] ? $this->settings['privatekey'] : $this->settings['secretkey']
             ));
         } else {
             Paymentwall_Config::getInstance()->set(array(
