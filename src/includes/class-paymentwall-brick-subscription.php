@@ -82,7 +82,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             $this->prepare_user_profile_data($order),
             array(
                 'custom[integration_module]' => 'woocommerce',
-                'uid' => empty($order->user_id) ? (empty($order->billing_email) ? $_SERVER['REMOTE_ADDR'] : $order->billing_email) : $order->user_id
+                'uid' => empty($order->user_id) ? (empty($order->billing_email) ? $this->getRealClientIP() : $order->billing_email) : $order->user_id
             )
         ));
         $response = json_decode($paymentwall_subscription->GetRawResponseData());

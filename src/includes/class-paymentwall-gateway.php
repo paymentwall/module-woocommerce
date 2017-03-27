@@ -141,7 +141,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 $subscription  = array_shift( $subscriptions );
                 $subscription_key = get_post_meta($original_order_id, '_subscription_id');
 
-                if (isset($_GET['initial_ref']) && $_GET['initial_ref'] && (isset($subscription_key[0]) && $subscription_key[0] == $_GET['initial_ref'])) {
+                if ($pingback->getParameter['initial_ref'] && (isset($subscription_key[0]) && $subscription_key[0] == $pingback->getParameter('initial_ref'))) {
                     $subscription->update_status('on-hold');
                     $subscription->add_order_note(__('Subscription renewal payment due: Status changed from Active to On hold.', PW_TEXT_DOMAIN));
                     $new_order = wcs_create_renewal_order( $subscription );
@@ -232,28 +232,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             'reason' => 'none',
             'is_test' => $this->settings['test_mode'] ? 1 : 0,
         );
-    }
-
-    function getRealClientIP()
-    {
-        if (function_exists('getallheaders')) {
-            $headers = getallheaders();
-        } else {
-            $headers = $_SERVER;
-        }
-
-        //Get the forwarded IP if it exists
-        if (array_key_exists('X-Forwarded-For', $headers) && filter_var($headers['X-Forwarded-For'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            $the_ip = $headers['X-Forwarded-For'];
-        } elseif (array_key_exists('HTTP_X_FORWARDED_FOR', $headers) && filter_var($headers['HTTP_X_FORWARDED_FOR'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            $the_ip = $headers['HTTP_X_FORWARDED_FOR'];
-        } elseif (array_key_exists('Cf-Connecting-Ip', $headers)) {
-            $the_ip = $headers['Cf-Connecting-Ip'];
-        } else {
-            $the_ip = filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4);
-        }
-
-        return $the_ip;
     }
 
 }
