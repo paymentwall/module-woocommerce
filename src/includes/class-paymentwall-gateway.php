@@ -145,10 +145,10 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     $subscription->update_status('on-hold');
                     $subscription->add_order_note(__('Subscription renewal payment due: Status changed from Active to On hold.', PW_TEXT_DOMAIN));
                     $new_order = wcs_create_renewal_order( $subscription );
-                    $new_order->add_order_note(__('Payment approved by Paymentwall - Transaction Id: ' . $_GET['ref'], PW_TEXT_DOMAIN));
-                    update_post_meta($new_order->id, '_subscription_id', $_GET['ref']);
+                    $new_order->add_order_note(__('Payment approved by Paymentwall - Transaction Id: ' . $pingback->getParameter['ref'], PW_TEXT_DOMAIN));
+                    update_post_meta($new_order->id, '_subscription_id', $pingback->getParameter['ref']);
                     $new_order->set_payment_method($subscription->payment_gateway);
-                    $new_order->payment_complete($_GET['ref']);
+                    $new_order->payment_complete($pingback->getParameter['ref']);
                 } else {
                     $order->add_order_note(__('Payment approved by Paymentwall - Transaction Id: ' . $pingback->getReferenceId(), PW_TEXT_DOMAIN));
                     $order->payment_complete($pingback->getReferenceId());
