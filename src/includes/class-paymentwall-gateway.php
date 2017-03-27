@@ -140,6 +140,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 $subscriptions = wcs_get_subscriptions_for_order( $original_order_id, array( 'order_type' => 'parent' ) );
                 $subscription  = array_shift( $subscriptions );
                 $subscription_key = get_post_meta($original_order_id, '_subscription_id');
+
                 if (isset($_GET['initial_ref']) && $_GET['initial_ref'] && (isset($subscription_key[0]) && $subscription_key[0] == $_GET['initial_ref'])) {
                     $subscription->update_status('on-hold');
                     $subscription->add_order_note(__('Subscription renewal payment due: Status changed from Active to On hold.', PW_TEXT_DOMAIN));
@@ -152,10 +153,12 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     $order->add_order_note(__('Payment approved by Paymentwall - Transaction Id: ' . $pingback->getReferenceId(), PW_TEXT_DOMAIN));
                     $order->payment_complete($pingback->getReferenceId());
                 }
+
                 $action_args = array('subscription_id' => $subscription->id);
                 $hooks = array(
                     'woocommerce_scheduled_subscription_payment',
                 );
+                
                 foreach($hooks as $hook) {
                     $result = wc_unschedule_action($hook, $action_args);
                 }
