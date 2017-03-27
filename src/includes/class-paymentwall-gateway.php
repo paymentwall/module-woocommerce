@@ -141,7 +141,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 $subscription  = array_shift( $subscriptions );
                 $subscription_key = get_post_meta($original_order_id, '_subscription_id');
 
-                if ($pingback->getParameter['initial_ref'] && (isset($subscription_key[0]) && $subscription_key[0] == $pingback->getParameter('initial_ref'))) {
+                if ($pingback->getParameter('initial_ref') && (isset($subscription_key[0]) && $subscription_key[0] == $pingback->getParameter('initial_ref'))) {
                     $subscription->update_status('on-hold');
                     $subscription->add_order_note(__('Subscription renewal payment due: Status changed from Active to On hold.', PW_TEXT_DOMAIN));
                     $new_order = wcs_create_renewal_order( $subscription );
