@@ -9,8 +9,6 @@
  * License: The MIT License (MIT)
  *
  */
-error_reporting(E_ERROR);
-ini_set('display_errors',1);
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
     public $id = 'paymentwall';
