@@ -9,7 +9,8 @@
  * License: The MIT License (MIT)
  *
  */
-
+error_reporting(E_ERROR);
+ini_set('display_errors',1);
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
     public $id = 'paymentwall';
@@ -52,7 +53,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             empty($order->user_id) ? $order->billing_email : $order->user_id,
             $this->settings['widget'],
             array(
-                new Paymentwall_Product($order->id, $order->order_total, $order->order_currency, 'Order #' . $order->id)
+                new Paymentwall_Product($order_id, $order->order_total, $order->order_currency, 'Order #' . $order_id)
             ),
             array_merge(
                 array(
@@ -74,7 +75,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         WC()->cart->empty_cart();
 
         echo $this->get_template('widget.html', array(
-            'orderId' => $order->id,
+            'orderId' => $order_id,
             'title' => __('Please continue the purchase via Paymentwall using the widget below.', PW_TEXT_DOMAIN),
             'iframe' => $iframe,
             'baseUrl' => get_site_url(),
@@ -97,7 +98,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 $order->order_key,
                 add_query_arg(
                     'order',
-                    $order->id,
+                    !method_exists($order, 'get_id') ? $order->id : $order->get_id(),
                     $order->get_checkout_payment_url(true)
                 )
             )
@@ -122,7 +123,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $pingback_params = $_GET;
 
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
-        if ($pingback->validate()) {
+        if ($pingback->validate(true)) {
 
             if ($pingback->isDeliverable()) {
 
@@ -137,16 +138,18 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     $response = $delivery->post($this->prepare_delivery_confirmation_data($order, $pingback->getReferenceId()));
                 }
 
-                $subscriptions = wcs_get_subscriptions_for_order( $original_order_id, array( 'order_type' => 'parent' ) );
-                $subscription  = array_shift( $subscriptions );
-                $subscription_key = get_post_meta($original_order_id, '_subscription_id');
+                if(class_exists('WC_Subscriptions')) {
+                    $subscriptions = wcs_get_subscriptions_for_order( $original_order_id, array( 'order_type' => 'parent' ) );
+                    $subscription  = array_shift( $subscriptions );
+                    $subscription_key = get_post_meta($original_order_id, '_subscription_id');
+                }
 
                 if ($pingback->getParameter('initial_ref') && (isset($subscription_key[0]) && $subscription_key[0] == $pingback->getParameter('initial_ref'))) {
                     $subscription->update_status('on-hold');
                     $subscription->add_order_note(__('Subscription renewal payment due: Status changed from Active to On hold.', PW_TEXT_DOMAIN));
                     $new_order = wcs_create_renewal_order( $subscription );
                     $new_order->add_order_note(__('Payment approved by Paymentwall - Transaction Id: ' . $pingback->getReferenceId(), PW_TEXT_DOMAIN));
-                    update_post_meta($new_order->id, '_subscription_id', $pingback->getReferenceId());
+                    update_post_meta(!method_exists($new_order, 'get_id') ? $new_order->id : $new_order->get_id(), '_subscription_id', $pingback->getReferenceId());
                     $new_order->set_payment_method($subscription->payment_gateway);
                     $new_order->payment_complete($pingback->getReferenceId());
                 } else {
@@ -154,14 +157,17 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     $order->payment_complete($pingback->getReferenceId());
                 }
 
-                $action_args = array('subscription_id' => $subscription->id);
-                $hooks = array(
-                    'woocommerce_scheduled_subscription_payment',
-                );
-                
-                foreach($hooks as $hook) {
-                    $result = wc_unschedule_action($hook, $action_args);
+                if (!empty($subscriptions)) {
+                    $action_args = array('subscription_id' => !method_exists($subscription, 'get_id') ? $subscription->id : $subscription->get_id());
+                    $hooks = array(
+                        'woocommerce_scheduled_subscription_payment',
+                    );
+
+                    foreach($hooks as $hook) {
+                        $result = wc_unschedule_action($hook, $action_args);
+                    }
                 }
+
             } elseif ($pingback->isCancelable()) {
                 $order->cancel_order(__('Reason: ' . $pingback->getParameter('reason'), PW_TEXT_DOMAIN));
             } elseif ($pingback->isUnderReview()) {
@@ -190,7 +196,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             if ($order->post_status == PW_ORDER_STATUS_PROCESSING) {
                 WC()->cart->empty_cart();
                 $return['status'] = true;
-                $return['url'] = get_permalink(wc_get_page_id('checkout')) . '/order-received/' . $order->id . '?key=' . $order->post->post_password;
+                $return['url'] = get_permalink(wc_get_page_id('checkout')) . '/order-received/' . intval($_POST['order_id']) . '?key=' . $order->post->post_password;
             }
         }
         die(json_encode($return));
