@@ -121,7 +121,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $pingback_params = $_GET;
 
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
-        if ($pingback->validate(true)) {
+        if ($pingback->validate()) {
 
             if ($pingback->isDeliverable()) {
 
@@ -136,7 +136,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     $response = $delivery->post($this->prepare_delivery_confirmation_data($order, $pingback->getReferenceId()));
                 }
 
-                if(class_exists('WC_Subscriptions')) {
+                if(paymentwall_subscription_enable()) {
                     $subscriptions = wcs_get_subscriptions_for_order( $original_order_id, array( 'order_type' => 'parent' ) );
                     $subscription  = array_shift( $subscriptions );
                     $subscription_key = get_post_meta($original_order_id, '_subscription_id');
