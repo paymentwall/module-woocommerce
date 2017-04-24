@@ -44,7 +44,6 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
 
         $this->init_configs();
         $order = wc_get_order($order_id);
-
         try {
             if (wcs_order_contains_subscription($order)) {
                 $subscription = wcs_get_subscriptions_for_order($order);
@@ -75,6 +74,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             'result' => 'fail',
             'redirect' => ''
         );
+        $orderId = !method_exists($order, 'get_id') ? $order->id : $order->get_id();
 
         $paymentwall_subscription = new Paymentwall_Subscription();
         $paymentwall_subscription->create(array_merge(
@@ -92,7 +92,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             if ($paymentwall_subscription->isActive()) {
                 // Add order note
                 $order->add_order_note(sprintf(__('Brick subscription payment approved (ID: %s)', PW_TEXT_DOMAIN), $response->id));
-                update_post_meta( $order->id, '_subscription_id', $response->id);
+                update_post_meta( $orderId, '_subscription_id', $response->id);
             }
 
             $return['result'] = 'success';
@@ -103,12 +103,15 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             WC()->cart->empty_cart();
             WC()->session->set('orderId', null);
         } elseif (!empty($response->secure)) {
-            WC()->session->set('orderId', $order->id);
+            WC()->session->set('orderId', $orderId);
             $return['result'] = 'secure';
             $return['secure'] = $response->secure->formHTML;
             die(json_encode($return));
         } else {
+            $return['result'] ='error';
+            $return['message'] = $response->error;
             wc_add_notice(__($response->error), 'error');
+            die(json_encode($return));
         }
 
         return $return;
@@ -136,7 +139,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
                 'email' => $order->billing_email,
                 'fingerprint' => $brick['fingerprint'],
                 'description' => sprintf(__('%s - Order #%s', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
-                'plan' => $order->id,
+                'plan' => !method_exists($order, 'get_id') ? $order->id : $order->get_id(),
                 'period' => $subscription->billing_period,
                 'period_duration' => $subscription->billing_interval,
                 'secure_token' => (!empty($brick['cc_brick_secure_token'])) ? $brick['cc_brick_secure_token'] : null,
@@ -210,8 +213,9 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
      */
     public function cancel_subscription_action($subscription) {
         $this->init_configs();
+        $order_id = !method_exists($subscription, 'get_id') ? $subscription->order->id : $subscription->order->get_id();
 
-        if ($subscription_key = $this->get_subscription_key($subscription->order->id)) {
+        if ($subscription_key = $this->get_subscription_key($order_id)) {
             $subscription_api = new Paymentwall_Subscription($subscription_key);
             $result = $subscription_api->cancel();
         }
