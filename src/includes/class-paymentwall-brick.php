@@ -100,7 +100,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
             'amount' => $order->get_total(),
             'currency' => $order->get_order_currency(),
             'email' => $order->billing_email,
-            'plan' => $order->id,
+            'plan' => !method_exists($order, 'get_id') ? $order->id : $order->get_id(),
             'description' => sprintf(__('%s - Order #%s', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
         );
         if (!empty($brick['cc_brick_secure_token'])) {
@@ -148,15 +148,15 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
             $return['redirect'] = $this->process_success($order, $charge, $message);
             $return['message'] = $message;
         } elseif (!empty($responseData['secure'])) {
-            WC()->session->set('orderId', $order->id);
+            WC()->session->set('orderId', !method_exists($order, 'get_id') ? $order->id : $order->get_id());
             $return['result'] = 'secure';
             $return['secure'] = $responseData['secure']['formHTML'];
             die(json_encode($return));
         } else {
-            $errors = json_decode($response, true);
-            wc_add_notice(__($errors['error']['message']), 'error');
-            $return['result'] = 'error';
-            $return['message'] = $errors['error']['message'];
+            $return['result'] ='error';
+            $return['message'] = $responseData['error'];
+            wc_add_notice(__($responseData['error']), 'error');
+            die(json_encode($return));
         }
         return $return;
     }
@@ -175,7 +175,6 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
                 __('Brick payment approved (ID: %s)', PW_TEXT_DOMAIN),
                 $charge->getId()));
             // Payment complete
-            $order->payment_complete($charge->getId());
             $message = "Your order has been received !";
         } elseif ($charge->isUnderReview()) {
             $order->update_status('on-hold');
