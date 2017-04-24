@@ -153,10 +153,10 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
             $return['secure'] = $responseData['secure']['formHTML'];
             die(json_encode($return));
         } else {
-            $errors = json_decode($response, true);
-            wc_add_notice(__($errors['error']['message']), 'error');
-            $return['result'] = 'error';
-            $return['message'] = $errors['error']['message'];
+            $return['result'] ='error';
+            $return['message'] = $responseData['error'];
+            wc_add_notice(__($responseData['error']), 'error');
+            die(json_encode($return));
         }
         return $return;
     }

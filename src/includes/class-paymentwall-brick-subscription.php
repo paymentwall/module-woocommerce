@@ -108,7 +108,10 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             $return['secure'] = $response->secure->formHTML;
             die(json_encode($return));
         } else {
+            $return['result'] ='error';
+            $return['message'] = $response->error;
             wc_add_notice(__($response->error), 'error');
+            die(json_encode($return));
         }
 
         return $return;
