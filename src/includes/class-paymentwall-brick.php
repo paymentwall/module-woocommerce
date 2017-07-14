@@ -18,6 +18,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
     public function __construct() {
         parent::__construct();
 
+        $this->icon = PW_PLUGIN_URL . '/assets/images/icon-creditcard.jpg';
         $this->title = $this->settings['title'];
         $this->notify_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'Paymentwall_Brick', home_url('/')));
         $this->method_title = __('Brick', 'paymentwall-for-woocommerce');
