@@ -48,8 +48,7 @@ var Brick_Payment = {
         });
     }, openConfirm3ds: function () {
         var win = window.open("", "Brick: Verify 3D secure", "toolbar=no, directories=no, status=no, menubar=no, scrollbars=yes, resizable=no, width=1024, height=720");
-        var popup = win.document.body;
-        jQuery(popup).append(Brick_Payment.form3Ds);
+        win.document.body.innerHTML += Brick_Payment.form3Ds;
         win.document.forms[0].submit();
         return false;
     }, threeDSecureMessageHandle: function (event) {
