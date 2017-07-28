@@ -2,8 +2,8 @@
 Contributors: Paymentwall
 Tags: payment, paymentgateway, woocommerce, ecommerce
 Requires at least: 4.0 & WooCommerce 2.6+
-Tested up to: 4.7 & Woocommerce 2.6.11
-Stable tag: 1.4.0
+Tested up to: 4.8 & Woocommerce 3.1
+Stable tag: 1.5.2
 License: The MIT License (MIT)
 
 Official Paymentwall module for WordPress WooCommerce.
@@ -35,6 +35,18 @@ View our full installation guide: <https://www.paymentwall.com/us/documentation/
 1. Screenshot 1 - Paymentwall Settings Page
 
 == Changelog ==
+
+= v1.5.2 [28/07/2017] =
+* Add validation for checkout page
+
+= v1.5.1 [17/07/2017] =
+* Update module for Woocommerce 3.1
+* Fix jquery conflict with other plugin
+* Add icons for Brick in checkout page
+* Add user profiles parameter API for better risk tracking
+
+= v1.5.0 [25/04/2017] =
+* Update for Woocommerce 3.0
 
 = v1.4.0 [27/03/2017] =
 * Update pingback for Brick
