@@ -28,7 +28,7 @@ Paymentwall is the leading all-in-one global payments platform for digital goods
     * The **Widget Code** is located at the Widgets page.
 6. Click the **Save Changes** button
 
-View our full installation guide: <https://www.paymentwall.com/us/documentation/WooCommerce/1409>
+View our full installation guide: <https://docs.paymentwall.com/modules/woocommerce>
 
 == Screenshots ==
 
@@ -86,5 +86,5 @@ View our full installation guide: <https://www.paymentwall.com/us/documentation/
 == Upgrade Notice == 
 ## Support
 
-* View our full installation guide: <https://www.paymentwall.com/us/documentation/WooCommerce/1409>
+* View our full installation guide: <https://docs.paymentwall.com/modules/woocommerce>
 * Learn more about Paymentwall solutions: <https://www.paymentwall.com/en/payment-solutions>
