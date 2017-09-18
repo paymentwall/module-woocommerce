@@ -129,13 +129,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     die(PW_DEFAULT_SUCCESS_PINGBACK_VALUE);
                 }
 
-                // Call Delivery Confirmation API
-                if ($this->settings['enable_delivery']) {
-                    // Delivery Confirmation
-                    $delivery = new Paymentwall_GenerericApiObject('delivery');
-                    $response = $delivery->post($this->prepare_delivery_confirmation_data($order, $pingback->getReferenceId()));
-                }
-
                 if(paymentwall_subscription_enable()) {
                     $subscriptions = wcs_get_subscriptions_for_order( $original_order_id, array( 'order_type' => 'parent' ) );
                     $subscription  = array_shift( $subscriptions );
