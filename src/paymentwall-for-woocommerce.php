@@ -33,6 +33,7 @@ function load_paymentwall_payments() {
     include(PW_PLUGIN_PATH . '/includes/class-paymentwall-gateway.php');
     include(PW_PLUGIN_PATH . '/includes/class-paymentwall-brick.php');
     include(PW_PLUGIN_PATH . '/includes/class-paymentwall-brick-subscription.php');
+    include(PW_PLUGIN_PATH . '/includes/class-paymentwall-api.php');
 
     function paymentwall_payments($methods) {
         $methods[] = 'Paymentwall_Gateway';
@@ -83,3 +84,8 @@ function pw_child_plugin_has_parent_plugin() {
 
 add_action('admin_init', 'pw_child_plugin_has_parent_plugin');
 
+function sendDeliveryApi($orderId) {
+    $paymentwallApi = new Paymentwall_Api();
+    $paymentwallApi->sendDeliveryApi($orderId);
+}
+add_action('woocommerce_order_status_completed', 'sendDeliveryApi');
