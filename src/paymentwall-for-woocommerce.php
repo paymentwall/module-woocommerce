@@ -5,7 +5,7 @@ defined('ABSPATH') or exit();
  * Plugin Name: Paymentwall for WooCommerce
  * Plugin URI: https://www.paymentwall.com/en/documentation/WooCommerce/1409
  * Description: Official Paymentwall module for WordPress WooCommerce.
- * Version: 1.5.3
+ * Version: 1.5.1
  * Author: The Paymentwall Team
  * Author URI: http://www.paymentwall.com/
  * Text Domain: paymentwall-for-woocommerce
@@ -18,6 +18,7 @@ define('PW_DEFAULT_SUCCESS_PINGBACK_VALUE', 'OK');
 define('PW_ORDER_STATUS_PENDING', 'wc-pending');
 define('PW_ORDER_STATUS_COMPLETED', 'wc-completed');
 define('PW_ORDER_STATUS_PROCESSING', 'wc-processing');
+define('PW_ORDER_STATUS_CANCELLED', 'wc-cancelled');
 define('PW_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('PW_PLUGIN_URL', plugins_url('', __FILE__));
 

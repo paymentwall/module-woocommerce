@@ -48,8 +48,7 @@ var Brick_Payment = {
         });
     }, openConfirm3ds: function () {
         var win = window.open("", "Brick: Verify 3D secure", "toolbar=no, directories=no, status=no, menubar=no, scrollbars=yes, resizable=no, width=1024, height=720");
-        var popup = win.document.body;
-        jQuery(popup).append(Brick_Payment.form3Ds);
+        win.document.body.innerHTML += Brick_Payment.form3Ds;
         win.document.forms[0].submit();
         return false;
     }, threeDSecureMessageHandle: function (event) {
@@ -83,6 +82,10 @@ var Brick_Payment = {
                     Brick_Payment.form3Ds = response.secure;
                     var requireConfirm = "Please verify 3D-secure to continue checkout. <a href='javascript:void(0)' onclick='Brick_Payment.openConfirm3ds()'>Click here !</a>";
                     Brick_Payment.showNotification(requireConfirm);
+                } else if (response.result == 'failure') {
+                    jQuery('#brick-loading').hide();
+                    jQuery('#brick-errors').html(response.messages);
+                    jQuery('#brick-errors').show();
                 } else {
                     Brick_Payment.showNotification(response.message, 'error');
                 }

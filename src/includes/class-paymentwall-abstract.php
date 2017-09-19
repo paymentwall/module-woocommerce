@@ -30,13 +30,17 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
         return array(
             'customer[city]' => $order->billing_city,
             'customer[state]' => $order->billing_state,
-            'customer[address]' => $order->shipping_address_1,
-            'customer[country]' => $order->shipping_country,
+            'customer[address]' => $order->billing_address_1,
+            'customer[country]' => $order->billing_country,
             'customer[zip]' => $order->billing_postcode,
             'customer[username]' => $order->billing_email,
             'customer[firstname]' => $order->billing_first_name,
             'customer[lastname]' => $order->billing_last_name,
             'email' => $order->billing_email,
+            'history[registration_date]' => get_userdata(get_current_user_id())->user_registered,
+            'history[payments_amount]' => $this->cumulative_payments_customer(PW_ORDER_STATUS_COMPLETED, $order->billing_email),
+            'history[payments_number]' => count($this->get_customer_orders( PW_ORDER_STATUS_COMPLETED, $order->billing_email )),
+            'history[cancelled_payments]' => count($this->get_customer_orders( PW_ORDER_STATUS_CANCELLED, $order->billing_email )),
         );
     }
 
@@ -93,5 +97,50 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
         }
 
         return $the_ip;
+    }
+
+    /**
+     * Return the orders of a current user with specific order status.
+     *
+     * @param string $status, $billing_email
+     * @return array
+     */
+    function get_customer_orders($status, $billing_email) {
+        $customer_orders = get_posts( array(
+            'meta_query' => array(
+                'relation' => 'AND',
+                array(
+                    'key' => '_billing_email',
+                    'value' => $billing_email,
+                ),
+                array(
+                    'key' => '_payment_method',
+                    'value' => 'paymentwall',
+                ),
+
+            ),
+            'post_type'   => 'shop_order',
+            'numberposts' => -1,
+            'post_status' => $status,
+    
+        ) );
+
+        return $customer_orders;
+    }
+    
+    function cumulative_payments_customer($status, $billing_email) {
+        
+        $customer_orders = $this->get_customer_orders($status, $billing_email);
+        $sum_total = 0;
+        
+        if (!empty($customer_orders)) {
+            foreach ( $customer_orders as $customer_order ) {
+                $order = new WC_Order($customer_order->ID);
+                $amount = $order->get_total();
+                $sum_total += $amount;
+            }
+        }
+        
+        return $sum_total;
     }
 }
