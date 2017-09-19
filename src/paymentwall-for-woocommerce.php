@@ -5,7 +5,7 @@ defined('ABSPATH') or exit();
  * Plugin Name: Paymentwall for WooCommerce
  * Plugin URI: https://www.paymentwall.com/en/documentation/WooCommerce/1409
  * Description: Official Paymentwall module for WordPress WooCommerce.
- * Version: 1.5.1
+ * Version: 1.5.3
  * Author: The Paymentwall Team
  * Author URI: http://www.paymentwall.com/
  * Text Domain: paymentwall-for-woocommerce
@@ -34,6 +34,7 @@ function load_paymentwall_payments() {
     include(PW_PLUGIN_PATH . '/includes/class-paymentwall-gateway.php');
     include(PW_PLUGIN_PATH . '/includes/class-paymentwall-brick.php');
     include(PW_PLUGIN_PATH . '/includes/class-paymentwall-brick-subscription.php');
+    include(PW_PLUGIN_PATH . '/includes/class-paymentwall-api.php');
 
     function paymentwall_payments($methods) {
         $methods[] = 'Paymentwall_Gateway';
@@ -84,3 +85,8 @@ function pw_child_plugin_has_parent_plugin() {
 
 add_action('admin_init', 'pw_child_plugin_has_parent_plugin');
 
+function sendDeliveryApi($orderId) {
+    $paymentwallApi = new Paymentwall_Api();
+    $paymentwallApi->sendDeliveryApi($orderId);
+}
+add_action('woocommerce_order_status_completed', 'sendDeliveryApi');
