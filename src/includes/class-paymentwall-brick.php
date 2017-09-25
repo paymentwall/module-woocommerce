@@ -99,8 +99,8 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
             'token' => $brick['token'],
             'fingerprint' => $brick['fingerprint'],
             'amount' => $order->get_total(),
-            'currency' => $order->get_order_currency(),
-            'email' => $order->billing_email,
+            'currency' => $order->get_currency(),
+            'email' => $order->get_billing_email(),
             'plan' => !method_exists($order, 'get_id') ? $order->id : $order->get_id(),
             'description' => sprintf(__('%s - Order #%s', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
         );
@@ -165,7 +165,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
     public function get_extra_data($order) {
         return array(
             'custom[integration_module]' => 'woocomerce',
-            'uid' => empty($order->user_id) ? $order->billing_email : $order->user_id
+            'uid' => empty($order->get_user_id()) ? $order->get_billing_email() : $order->get_user_id()
         );
     }
 

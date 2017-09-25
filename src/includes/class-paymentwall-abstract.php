@@ -28,19 +28,19 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
     protected function prepare_user_profile_data($order)
     {
         return array(
-            'customer[city]' => $order->billing_city,
-            'customer[state]' => $order->billing_state,
-            'customer[address]' => $order->billing_address_1,
-            'customer[country]' => $order->billing_country,
-            'customer[zip]' => $order->billing_postcode,
-            'customer[username]' => $order->billing_email,
-            'customer[firstname]' => $order->billing_first_name,
-            'customer[lastname]' => $order->billing_last_name,
-            'email' => $order->billing_email,
-            'history[registration_date]' => get_userdata(get_current_user_id())->user_registered,
-            'history[payments_amount]' => $this->cumulative_payments_customer(PW_ORDER_STATUS_COMPLETED, $order->billing_email),
-            'history[payments_number]' => count($this->get_customer_orders( PW_ORDER_STATUS_COMPLETED, $order->billing_email )),
-            'history[cancelled_payments]' => count($this->get_customer_orders( PW_ORDER_STATUS_CANCELLED, $order->billing_email )),
+            'customer[city]' => $order->get_billing_city(),
+            'customer[state]' => $order->get_billing_state() ? $order->get_billing_state() : 'NA',
+            'customer[address]' => $order->get_billing_address_1(),
+            'customer[country]' => $order->get_billing_country(),
+            'customer[zip]' => $order->get_billing_postcode(),
+            'customer[username]' => $order->get_billing_email(),
+            'customer[firstname]' => $order->get_billing_first_name(),
+            'customer[lastname]' => $order->get_billing_last_name(),
+            'email' => $order->get_billing_email(),
+            'history[registration_date]' => get_userdata(get_current_user_id())->user_registered ? get_userdata(get_current_user_id())->user_registered : 'NA',
+            'history[payments_amount]' => $this->cumulative_payments_customer(PW_ORDER_STATUS_COMPLETED, $order->get_billing_email() ),
+            'history[payments_number]' => count($this->get_customer_orders( PW_ORDER_STATUS_COMPLETED, $order->get_billing_email() )),
+            'history[cancelled_payments]' => count($this->get_customer_orders( PW_ORDER_STATUS_CANCELLED, $order->get_billing_email() )),
         );
     }
 
