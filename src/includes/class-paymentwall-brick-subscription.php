@@ -82,7 +82,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             $this->prepare_user_profile_data($order),
             array(
                 'custom[integration_module]' => 'woocommerce',
-                'uid' => empty($order->user_id) ? (empty($order->billing_email) ? $this->getRealClientIP() : $order->billing_email) : $order->user_id
+                'uid' => empty($order->get_user_id()) ? (empty($order->get_billing_email()) ? $this->getRealClientIP() : $order->get_billing_email()) : $order->get_user_id()
             )
         ));
         $response = json_decode($paymentwall_subscription->GetRawResponseData());
@@ -135,8 +135,8 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             array(
                 'token' => $brick['token'],
                 'amount' => WC_Subscriptions_Order::get_recurring_total($order),
-                'currency' => $order->get_order_currency(),
-                'email' => $order->billing_email,
+                'currency' => $order->get_currency(),
+                'email' => $order->get_billing_email(),
                 'fingerprint' => $brick['fingerprint'],
                 'description' => sprintf(__('%s - Order #%s', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
                 'plan' => !method_exists($order, 'get_id') ? $order->id : $order->get_id(),

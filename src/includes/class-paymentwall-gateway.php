@@ -48,14 +48,14 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
         $order = wc_get_order($order_id);
         $widget = new Paymentwall_Widget(
-            empty($order->user_id) ? $order->billing_email : $order->user_id,
+            empty($order->get_user_id()) ? $order->get_billing_email() : $order->get_user_id(),
             $this->settings['widget'],
             array(
-                new Paymentwall_Product($order_id, $order->order_total, $order->order_currency, 'Order #' . $order_id)
+                new Paymentwall_Product($order_id, $order->get_formatted_order_total(), $order->get_currency(), 'Order #' . $order_id)
             ),
             array_merge(
                 array(
-                    'email' => $order->billing_email,
+                    'email' => $order->get_billing_email(),
                     'integration_module' => 'woocommerce',
                     'test_mode' => $this->settings['test_mode']
                 ),
@@ -93,7 +93,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             'result' => 'success',
             'redirect' => add_query_arg(
                 'key',
-                $order->order_key,
+                $order->get_order_key(),
                 add_query_arg(
                     'order',
                     !method_exists($order, 'get_id') ? $order->id : $order->get_id(),
@@ -218,14 +218,14 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             'estimated_update_datetime' => date('Y/m/d H:i:s'),
             'refundable' => 'yes',
             'details' => 'Item will be delivered via email by ' . date('Y/m/d H:i:s'),
-            'shipping_address[email]' => $order->billing_email,
-            'shipping_address[firstname]' => $order->shipping_first_name,
-            'shipping_address[lastname]' => $order->shipping_last_name,
-            'shipping_address[country]' => $order->shipping_country,
-            'shipping_address[street]' => $order->shipping_address_1,
-            'shipping_address[state]' => $order->shipping_state,
-            'shipping_address[zip]' => $order->shipping_postcode,
-            'shipping_address[city]' => $order->shipping_city,
+            'shipping_address[email]' => $order->get_billing_email(),
+            'shipping_address[firstname]' => $order->get_shipping_first_name(),
+            'shipping_address[lastname]' => $order->get_shipping_last_name(),
+            'shipping_address[country]' => $order->get_shipping_country(),
+            'shipping_address[street]' => $order->get_shipping_address_1(),
+            'shipping_address[state]' => $order->get_shipping_state(),
+            'shipping_address[zip]' => $order->get_shipping_postcode(),
+            'shipping_address[city]' => $order->get_shipping_city(),
             'reason' => 'none',
             'is_test' => $this->settings['test_mode'] ? 1 : 0,
         );
