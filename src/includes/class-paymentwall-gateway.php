@@ -47,11 +47,12 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $this->init_configs();
 
         $order = wc_get_order($order_id);
+    
         $widget = new Paymentwall_Widget(
             empty($order->get_user_id()) ? $order->get_billing_email() : $order->get_user_id(),
             $this->settings['widget'],
             array(
-                new Paymentwall_Product($order_id, $order->get_formatted_order_total(), $order->get_currency(), 'Order #' . $order_id)
+                new Paymentwall_Product($order_id, $order->get_total(), $order->get_currency(), 'Order #' . $order_id)
             ),
             array_merge(
                 array(
@@ -119,7 +120,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $payment->init_configs(true);
 
         $pingback_params = $_GET;
-
+        
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
         if ($pingback->validate()) {
 
