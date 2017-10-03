@@ -36,6 +36,9 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 
 == Changelog ==
 
+= v1.5.5 [03/10/2017] =
+* Add backward compatibility for PHP version <5.5
+
 = v1.5.4 [27/09/2017] =
 * Update and replace deprecated functions
 

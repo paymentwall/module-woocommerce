@@ -76,13 +76,15 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
         );
         $orderId = !method_exists($order, 'get_id') ? $order->id : $order->get_id();
 
+        $userId = $order->get_user_id();
+        $billingEmail = $order->get_billing_email();
         $paymentwall_subscription = new Paymentwall_Subscription();
         $paymentwall_subscription->create(array_merge(
             $this->prepare_subscription_data($order, $subscription),
             $this->prepare_user_profile_data($order),
             array(
                 'custom[integration_module]' => 'woocommerce',
-                'uid' => empty($order->get_user_id()) ? (empty($order->get_billing_email()) ? $this->getRealClientIP() : $order->get_billing_email()) : $order->get_user_id()
+                'uid' => empty($userId) ? (empty($billingEmail) ? $this->getRealClientIP() : $order->get_billing_email()) : $order->get_user_id()
             )
         ));
         $response = json_decode($paymentwall_subscription->GetRawResponseData());
