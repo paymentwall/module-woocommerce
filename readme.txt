@@ -3,7 +3,7 @@ Contributors: Paymentwall
 Tags: payment, paymentgateway, woocommerce, ecommerce
 Requires at least: 4.0 & WooCommerce 2.6+
 Tested up to: 4.8 & Woocommerce 3.1
-Stable tag: 1.5.4
+Stable tag: 1.5.5
 License: The MIT License (MIT)
 
 Official Paymentwall module for WordPress WooCommerce.
