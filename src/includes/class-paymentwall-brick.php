@@ -28,7 +28,8 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         add_filter('woocommerce_after_checkout_validation', array($this, 'brick_fields_validation'));
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
-        if(!empty(WC()->session) && isset($_POST['brick']) && $orderId = WC()->session->get('orderId')) {
+        $wcSession = WC()->session;
+        if(!empty($wcSession) && isset($_POST['brick']) && $orderId = WC()->session->get('orderId')) {
             $result = $this->process_payment($orderId);
             die(json_encode($result));
         }
@@ -163,9 +164,10 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
     }
 
     public function get_extra_data($order) {
+        $userId = $order->get_user_id();
         return array(
             'custom[integration_module]' => 'woocomerce',
-            'uid' => empty($order->get_user_id()) ? $order->get_billing_email() : $order->get_user_id()
+            'uid' => empty($userId) ? $order->get_billing_email() : $order->get_user_id()
         );
     }
 

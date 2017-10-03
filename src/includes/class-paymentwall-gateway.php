@@ -47,9 +47,10 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $this->init_configs();
 
         $order = wc_get_order($order_id);
-    
+
+        $userId = $order->get_user_id();
         $widget = new Paymentwall_Widget(
-            empty($order->get_user_id()) ? $order->get_billing_email() : $order->get_user_id(),
+            empty($userId) ? $order->get_billing_email() : $order->get_user_id(),
             $this->settings['widget'],
             array(
                 new Paymentwall_Product($order_id, $order->get_total(), $order->get_currency(), 'Order #' . $order_id)
