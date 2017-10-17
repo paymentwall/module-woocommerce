@@ -143,4 +143,32 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
         
         return $sum_total;
     }
+
+    function s_datediff( $str_interval, $dt_menor, $dt_maior, $relative=false){
+
+        if( is_string( $dt_menor)) $dt_menor = date_create( $dt_menor);
+        if( is_string( $dt_maior)) $dt_maior = date_create( $dt_maior);
+
+        $diff = date_diff( $dt_menor, $dt_maior, ! $relative);
+
+        switch( $str_interval){
+            case "year":
+                $total = $diff->y + $diff->m / 12 + $diff->d / 365.25;
+                break;
+            case "month":
+                $total= $diff->y * 12 + $diff->m + $diff->d/30 + $diff->h / 24;
+                break;
+            case 'week':
+                $total = $diff->days / 7;
+                break;
+            case "day":
+                $total = $diff->y * 365.25 + $diff->m * 30 + $diff->d + $diff->h/24 + $diff->i / 60;
+                break;
+        }
+        if( $diff->invert) {
+            return -1 * intval($total);
+        } else {
+            return intval($total);
+        }
+    }
 }

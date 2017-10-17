@@ -67,8 +67,8 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
      * @return array
      * @throws Exception
      */
-    public function process_subscription_payment($order, $subscription) {
-
+    public function process_subscription_payment(WC_Order $order, WC_Subscription $subscription) {
+error_reporting(E_ALL);
         $this->init_configs();
         $return = array(
             'result' => 'fail',
@@ -125,7 +125,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
      * @return array
      * @throws Exception
      */
-    protected function prepare_subscription_data($order, $subscription) {
+    protected function prepare_subscription_data(WC_Order $order, WC_Subscription $subscription) {
         if (!isset($_POST['brick'])) {
             throw new Exception("Payment Invalid!");
         }
@@ -158,7 +158,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
      * @param $subscription
      * @return array
      */
-    protected function prepare_trial_data($order, $subscription) {
+    protected function prepare_trial_data(WC_Order $order, WC_Subscription $subscription) {
 
         $trial_end = $subscription->get_time('trial_end');
         $start = strtotime($order->order_date);
@@ -195,13 +195,11 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
      * @return bool
      */
     public function add_feature_support_for_subscription($is_supported, $feature, $subscription) {
-        if ($this->id === $subscription->payment_method) {
+        if ($this->id === $subscription->get_payment_method()) {
 
             if ('gateway_scheduled_payments' === $feature) {
                 $is_supported = false;
             } elseif (in_array($feature, $this->supports)) {
-                $is_supported = true;
-            } elseif (in_array($feature, $this->reference_transaction_supported_features)) {
                 $is_supported = true;
             }
         }

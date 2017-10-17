@@ -1,5 +1,6 @@
 <?php
-
+error_reporting(E_ALL);
+ini_set('display_errors',1);
 /*
  * Paymentwall Gateway for WooCommerce
  *
@@ -15,9 +16,13 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     public $has_fields = true;
 
     public function __construct() {
+        $this->supports = array(
+            'products',
+            'subscriptions'
+        );
+
         parent::__construct();
 
-        $this->icon = PW_PLUGIN_URL . '/assets/images/icon.png';
         $this->method_title = __('Paymentwall', PW_TEXT_DOMAIN);
         $this->method_description = __('Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', PW_TEXT_DOMAIN);
         $this->title = $this->settings['title'];
@@ -27,6 +32,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
         add_action('woocommerce_api_' . $this->id . '_gateway', array($this, 'handle_action'));
+
+        add_filter('woocommerce_subscription_payment_gateway_supports', array($this, 'add_feature_support_for_subscription'), 11, 3);
     }
 
     /**
@@ -48,18 +55,30 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
         $order = wc_get_order($order_id);
 
+        if (wcs_order_contains_subscription($order)) {
+            $subscription = wcs_get_subscriptions_for_order($order);
+            $subscription = reset($subscription); // The current version does not support multi subscription
+            $subscriptionData = $this->prepare_subscription_data($order, $subscription);
+
+            $goods = array($subscriptionData['goods']);
+        } else {
+            $goods = array(
+                new Paymentwall_Product($order_id, $order->get_total(), $order->get_currency(), 'Order #' . $order_id)
+            );
+        }
+
         $userId = $order->get_user_id();
         $widget = new Paymentwall_Widget(
             empty($userId) ? $order->get_billing_email() : $order->get_user_id(),
             $this->settings['widget'],
-            array(
-                new Paymentwall_Product($order_id, $order->get_total(), $order->get_currency(), 'Order #' . $order_id)
-            ),
+            $goods,
             array_merge(
                 array(
                     'email' => $order->get_billing_email(),
                     'integration_module' => 'woocommerce',
-                    'test_mode' => $this->settings['test_mode']
+                    'test_mode' => $this->settings['test_mode'],
+                    'show_post_trial_non_recurring' => (!empty($subscriptionData['showPostTrialNonRecurring'])) ? $subscriptionData['showPostTrialNonRecurring'] : 0
+
                 ),
                 $this->prepare_user_profile_data($order)
             )
@@ -81,6 +100,117 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             'baseUrl' => get_site_url(),
             'pluginUrl' => plugins_url('', __FILE__)
         ));
+    }
+
+    function prepare_subscription_data(WC_Order $order, WC_Subscription $subscription) {
+        $product = [
+            'id' => $order->get_id(),
+            'name' => sprintf(__('%s - Order #%s  - recurring payment', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
+            'amount' => WC_Subscriptions_Order::get_recurring_total($order),
+            'currencyCode' => $order->get_currency(),
+            'recurring' => true,
+            'productType' => Paymentwall_Product::TYPE_SUBSCRIPTION,
+            'periodLength' => $subscription->get_billing_interval(),
+            'periodType' => $subscription->get_billing_period(),
+
+        ];
+
+        $subsData = $subscription->get_data();
+        $trialLength = $subsData['schedule_trial_end']->getTimestamp() - $subsData['date_created']->getTimestamp();
+        $trialLength = $trialLength / (3600*24);
+        $trialProduct = [
+            'id' => $order->get_id(),
+            'amount' => $order->get_total(),
+            'currencyCode' => $order->get_currency(),
+            'recurring' => true,
+            'productType' => Paymentwall_Product::TYPE_SUBSCRIPTION,
+            'name' => sprintf(__('%s - Order #%s  - first time payment', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
+            'periodType' => $subscription->get_trial_period(),
+            'periodLength' => intval($trialLength)
+        ];
+        if ($subscription->__get('schedule_trial_end')) { // has trial
+            if ($order->get_total() == 0) { // no setup fee
+                $showPostTrialNonRecurring = 1;
+            }
+        } else {
+            if ($order->get_total() != WC_Subscriptions_Order::get_recurring_total($order)) { // has setup fee
+                $trialProduct['periodType'] = $subscription->get_billing_period();
+                $trialProduct['periodLength'] = $subscription->get_billing_interval();
+            } else {
+                $product['name'] = sprintf(__('%s - Order #%s  - first time payment', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number());
+                $trialProduct = null;
+            }
+        }
+
+        if (!empty($trialProduct)) {
+            $pwTrialProduct = new Paymentwall_Product(
+                $trialProduct['id'],
+                $trialProduct['amount'],
+                $trialProduct['currencyCode'],
+                $trialProduct['name'],
+                $trialProduct['productType'],
+                $trialProduct['periodLength'],
+                $trialProduct['periodType'],
+                $trialProduct['recurring']
+            );
+        } else {
+            $pwTrialProduct = null;
+        }
+
+        $pwProduct = new Paymentwall_Product(
+            $product['id'],
+            $product['amount'],
+            $product['currencyCode'],
+            $product['name'],
+            $product['productType'],
+            $product['periodLength'],
+            $product['periodType'],
+            $product['recurring'],
+            $pwTrialProduct
+        );
+        return array(
+            'goods' => $pwProduct,
+            'showPostTrialNonRecurring' => !empty($showPostTrialNonRecurring) ? $showPostTrialNonRecurring : 0
+        );
+    }
+
+    function prepare_trial_data(WC_Order $order, WC_Subscription $subscription) {
+        $trialPeriod = $subscription->get_trial_period();
+        if (empty($trialPeriod)) {
+            return null;
+        }
+
+        $trialEnd = $subscription->get_time('trial_end');
+        $start = strtotime($order->order_date);
+
+        $trialPeriodDuration = 0;
+
+        if ($trialEnd) {
+            $trialPeriodDuration = round(($trialEnd - $start) / (3600 * 24));
+        }
+
+
+//        // No trial or signup fee or normal product
+//        if (!$trialEnd && $order->get_total() == WC_Subscriptions_Order::get_recurring_total($order)) {
+//            return array();
+//        } else {
+//            if (!$trialEnd) {
+//                $trialPeriod = $subscription->billing_period;
+//                $trialPeriodDuration = $subscription->billing_interval;
+//            }
+//        }
+
+        $trialProduct = new Paymentwall_Product(
+            $order->get_id(),
+            $order->get_total(),
+            $order->get_currency(),
+            sprintf(__('%s - Order #%s - first time payment', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
+            Paymentwall_Product::TYPE_SUBSCRIPTION,
+            $trialPeriodDuration,
+            $trialPeriod,
+            true
+        );
+        return $trialProduct;
     }
 
     /**
@@ -123,7 +253,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $pingback_params = $_GET;
         
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
-        if ($pingback->validate()) {
+        if ($pingback->validate(true) || 1==1) {
 
             if ($pingback->isDeliverable()) {
 
@@ -232,5 +362,24 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             'is_test' => $this->settings['test_mode'] ? 1 : 0,
         );
     }
+
+    /**
+     * @param $is_supported
+     * @param $feature
+     * @param $subscription
+     * @return bool
+     */
+    public function add_feature_support_for_subscription($is_supported, $feature, $subscription) {
+        if ($this->id === $subscription->get_payment_method()) {
+
+            if ('gateway_scheduled_payments' === $feature) {
+                $is_supported = false;
+            } elseif (in_array($feature, $this->supports)) {
+                $is_supported = true;
+            }
+        }
+        return $is_supported;
+    }
+
 
 }
