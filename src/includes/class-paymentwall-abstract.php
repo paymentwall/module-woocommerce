@@ -2,6 +2,9 @@
 
 abstract class Paymentwall_Abstract extends WC_Payment_Gateway
 {
+    public $wcVersion = '';
+    public $wcsVersion = '';
+
     public function __construct()
     {
         $this->plugin_path = PW_PLUGIN_PATH;
@@ -9,6 +12,9 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
         // Load the settings.
         $this->init_settings();
         $this->init_form_fields();
+
+        $this->wcVersion = $this->get_woo_version_number('woocommerce');
+        $this->wcsVersion = $this->get_woo_version_number('woocommerce-subscriptions');
     }
 
     abstract public function init_configs($isPingback);
@@ -27,6 +33,23 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
 
     protected function prepare_user_profile_data($order)
     {
+        $orderData = $this->get_order_data($order);
+        return array(
+            'customer[city]' => $orderData['billing_city'],
+            'customer[state]' => $orderData['billing_state'] ? $orderData['billing_state'] : 'NA',
+            'customer[address]' => $orderData['billing_address1'],
+            'customer[country]' => $orderData['billing_country'],
+            'customer[zip]' => $orderData['billing_postcode'],
+            'customer[username]' => $orderData['billing_email'],
+            'customer[firstname]' => $orderData['billing_firstname'],
+            'customer[lastname]' => $orderData['billing_lastname'],
+            'email' => $orderData['billing_email'],
+            'history[registration_date]' => get_userdata(get_current_user_id())->user_registered ? get_userdata(get_current_user_id())->user_registered : 'NA',
+            'history[payments_amount]' => $this->cumulative_payments_customer(PW_ORDER_STATUS_COMPLETED, $orderData['billing_email']),
+            'history[payments_number]' => count($this->get_customer_orders( PW_ORDER_STATUS_COMPLETED, $orderData['billing_email'])),
+            'history[cancelled_payments]' => count($this->get_customer_orders( PW_ORDER_STATUS_CANCELLED, $orderData['billing_email'])),
+        );
+
         return array(
             'customer[city]' => $order->get_billing_city(),
             'customer[state]' => $order->get_billing_state() ? $order->get_billing_state() : 'NA',
@@ -170,5 +193,88 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
         } else {
             return intval($total);
         }
+    }
+
+
+    function get_woo_version_number($type) {
+        // If get_plugins() isn't available, require it
+        if ( ! function_exists( 'get_plugins' ) )
+            require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+
+        // Create the plugins folder and file variables
+        $plugin_folder = get_plugins( '/' . $type );
+        $plugin_file = $type . '.php';
+
+        // If the plugin version number is set, return it
+        if ( isset( $plugin_folder[$plugin_file]['Version'] ) ) {
+            return $plugin_folder[$plugin_file]['Version'];
+
+        } else {
+            // Otherwise return null
+            return NULL;
+        }
+    }
+
+    function get_order_data(WC_Order $order) {
+        $orderData = array();
+        $orderData['total'] = $order->get_total();
+        $orderData['user_id'] = $order->get_user_id();
+
+        if (strpos($this->wcVersion, "2.2") === 0
+            || strpos($this->wcVersion, "2.3") === 0
+            || strpos($this->wcVersion, "2.4") === 0
+            || strpos($this->wcVersion, "2.6") === 0
+        ) {
+            $orderData = array_merge($orderData, array(
+                'order_id' => $order->id,
+                'billing_city' => $order->billing_city,
+                'billing_state' => $order->billing_state,
+                'billing_address1' => $order->billing_address_1,
+                'billing_country' => $order->billing_country,
+                'billing_postcode' => $order->billing_postcode,
+                'billing_firstname' => $order->billing_first_name,
+                'billing_lastname' => $order->billing_last_name,
+                'billing_email' => $order->billing_email,
+                'currencyCode' => $order->order_currency,
+            ));
+        } elseif (strpos($this->wcVersion, "3.0") === 0
+            || strpos($this->wcVersion, "3.1") === 0
+        ) {
+            $orderData = array_merge($orderData, array(
+                'order_id' => $order->get_id(),
+                'billing_city' => $order->get_billing_city(),
+                'billing_state' => $order->get_billing_state(),
+                'billing_address1' => $order->get_billing_address_1(),
+                'billing_country' => $order->get_billing_country(),
+                'billing_postcode' => $order->get_billing_postcode(),
+                'billing_firstname' => $order->get_billing_first_name(),
+                'billing_lastname' => $order->get_billing_last_name(),
+                'billing_email' => $order->get_billing_email(),
+                'currencyCode' => $order->get_currency(),
+            ));
+        }
+
+        return $orderData;
+    }
+
+    function get_subscription_data(WC_Subscription $subscription) {
+        if (strpos($this->wcsVersion, "2.0") === 0) {
+            $subsData = array(
+                'schedule_trial_end' => strtotime($subscription->schedule_trial_end),
+                'date_created' => strtotime($subscription->order_date),
+                'billing_interval' => $subscription->billing_interval,
+                'billing_period' => $subscription->billing_period,
+                'trial_period' => $subscription->trial_period
+            );
+        } elseif (strpos($this->wcsVersion, "2.2") === 0 || $this->wcsVersionV > '2.0') {
+            $subsData = $subscription->get_data();
+            $subsData['schedule_trial_end'] = $subsData['schedule_trial_end']->getTimestamp();
+            $subsData['date_created'] = $subsData['date_created']->getTimestamp();
+            $subsData['billing_interval'] = $subscription->get_billing_interval();
+            $subsData['billing_period'] = $subscription->get_billing_period();
+            $subsData['trial_period'] = $subscription->get_trial_period();
+        }
+
+        return $subsData;
     }
 }
