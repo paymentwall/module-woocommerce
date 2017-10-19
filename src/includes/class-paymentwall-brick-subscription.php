@@ -68,7 +68,6 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
      * @throws Exception
      */
     public function process_subscription_payment(WC_Order $order, WC_Subscription $subscription) {
-error_reporting(E_ALL);
         $this->init_configs();
         $return = array(
             'result' => 'fail',

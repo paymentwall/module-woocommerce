@@ -1,6 +1,4 @@
 <?php
-ini_set('display_errors',1);
-error_reporting(E_ERROR);
 /*
  * Paymentwall Gateway for WooCommerce
  *
@@ -111,7 +109,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     function prepare_subscription_data(WC_Order $order, WC_Subscription $subscription) {
         $orderData = $this->get_order_data($order);
         $subsData = $this->get_subscription_data($subscription);
-        
+
         $product = [
             'id' => $orderData['order_id'],
             'name' => sprintf(__('%s - Order #%s  - recurring payment', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
@@ -243,7 +241,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $pingback_params = $_GET;
         
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
-        if ($pingback->validate(true) || 1==1) {
+        if ($pingback->validate(true)) {
 
             if ($pingback->isDeliverable()) {
 
