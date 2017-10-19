@@ -268,7 +268,7 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
             );
         } elseif (strpos($this->wcsVersion, "2.2") === 0 || $this->wcsVersionV > '2.0') {
             $subsData = $subscription->get_data();
-            $subsData['schedule_trial_end'] = $subsData['schedule_trial_end']->getTimestamp();
+            $subsData['schedule_trial_end'] = (!empty($subsData['schedule_trial_end'])) ? $subsData['schedule_trial_end']->getTimestamp() : null;
             $subsData['date_created'] = $subsData['date_created']->getTimestamp();
             $subsData['billing_interval'] = $subscription->get_billing_interval();
             $subsData['billing_period'] = $subscription->get_billing_period();
