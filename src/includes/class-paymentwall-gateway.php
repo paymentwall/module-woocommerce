@@ -112,7 +112,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
         $product = [
             'id' => $orderData['order_id'],
-            'name' => sprintf(__('%s - Order #%s  - recurring payment', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
+            'name' => sprintf(__('Order #%s  - recurring payment', PW_TEXT_DOMAIN), $order->get_order_number()),
             'amount' => WC_Subscriptions_Order::get_recurring_total($order),
             'currencyCode' => $orderData['currencyCode'],
             'recurring' => true,
@@ -128,7 +128,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             'currencyCode' => $orderData['currencyCode'],
             'recurring' => true,
             'productType' => Paymentwall_Product::TYPE_SUBSCRIPTION,
-            'name' => sprintf(__('%s - Order #%s  - first time payment', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
+            'name' => sprintf(__('Order #%s  - first time payment', PW_TEXT_DOMAIN), $order->get_order_number()),
             'periodType' => $subsData['trial_period'],
         ];
 
@@ -144,7 +144,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 $trialProduct['periodType'] = $subsData['billing_period'];
                 $trialProduct['periodLength'] = $subsData['billing_interval'];
             } else {
-                $product['name'] = sprintf(__('%s - Order #%s  - first time payment', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number());
+                $product['name'] = sprintf(__('Order #%s  - first time payment', PW_TEXT_DOMAIN), $order->get_order_number());
                 $trialProduct = null;
             }
         }
@@ -234,7 +234,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $pingback_params = $_GET;
         
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
-        if ($pingback->validate(true)) {
+        if ($pingback->validate()) {
 
             if ($pingback->isDeliverable()) {
 
