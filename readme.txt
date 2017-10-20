@@ -3,7 +3,7 @@ Contributors: Paymentwall
 Tags: payment, paymentgateway, woocommerce, ecommerce
 Requires at least: 4.0 & WooCommerce 2.6+
 Tested up to: 4.8 & Woocommerce 3.1
-Stable tag: 1.5.5
+Stable tag: 1.6.0
 License: The MIT License (MIT)
 
 Official Paymentwall module for WordPress WooCommerce.
@@ -35,6 +35,10 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 1. Screenshot 1 - Paymentwall Settings Page
 
 == Changelog ==
+
+= v1.6.0 [20/10/2017] =
+* Add support for Woocommerce Subscriptions plugin
+* Add backward compatibility for Woocommerce version 2.1 - 2.7
 
 = v1.5.5 [03/10/2017] =
 * Add backward compatibility for PHP version <5.5
