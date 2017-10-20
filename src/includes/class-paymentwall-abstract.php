@@ -220,11 +220,7 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
         $orderData['total'] = $order->get_total();
         $orderData['user_id'] = $order->get_user_id();
 
-        if (strpos($this->wcVersion, "2.2") === 0
-            || strpos($this->wcVersion, "2.3") === 0
-            || strpos($this->wcVersion, "2.4") === 0
-            || strpos($this->wcVersion, "2.6") === 0
-        ) {
+        if (version_compare('2.7', $this->wcVersion)) {
             $orderData = array_merge($orderData, array(
                 'order_id' => $order->id,
                 'billing_city' => $order->billing_city,
@@ -237,9 +233,7 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
                 'billing_email' => $order->billing_email,
                 'currencyCode' => $order->order_currency,
             ));
-        } elseif (strpos($this->wcVersion, "3.0") === 0
-            || strpos($this->wcVersion, "3.1") === 0
-        ) {
+        } else {
             $orderData = array_merge($orderData, array(
                 'order_id' => $order->get_id(),
                 'billing_city' => $order->get_billing_city(),
@@ -258,7 +252,7 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
     }
 
     function get_subscription_data(WC_Subscription $subscription) {
-        if (strpos($this->wcsVersion, "2.0") === 0) {
+        if (version_compare('2.2', $this->wcsVersion)) {
             $subsData = array(
                 'schedule_trial_end' => strtotime($subscription->schedule_trial_end),
                 'date_created' => strtotime($subscription->order_date),
@@ -266,7 +260,7 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
                 'billing_period' => $subscription->billing_period,
                 'trial_period' => $subscription->trial_period
             );
-        } elseif (strpos($this->wcsVersion, "2.2") === 0 || $this->wcsVersionV > '2.0') {
+        } else {
             $subsData = $subscription->get_data();
             $subsData['schedule_trial_end'] = (!empty($subsData['schedule_trial_end'])) ? $subsData['schedule_trial_end']->getTimestamp() : null;
             $subsData['date_created'] = $subsData['date_created']->getTimestamp();

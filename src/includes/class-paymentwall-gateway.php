@@ -189,12 +189,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     function process_payment($order_id) {
         $order = wc_get_order($order_id);
 
-        if (
-            strpos($this->wcVersion, "2.2") === 0
-            || strpos($this->wcVersion, "2.3") === 0
-            || strpos($this->wcVersion, "2.4") === 0
-            || strpos($this->wcVersion, "2.6") === 0
-        ) {
+        if (version_compare('2.7', $this->wcVersion)) {
             return array(
                 'result' => 'success',
                 'redirect' => add_query_arg(
@@ -207,9 +202,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     )
                 )
             );
-        } elseif (strpos($this->wcVersion, "3.0") === 0
-            || strpos($this->wcVersion, "3.1") === 0
-        ) {
+        } else {
             return array(
                 'result' => 'success',
                 'redirect' => add_query_arg(
