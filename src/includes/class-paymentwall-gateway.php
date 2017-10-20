@@ -189,7 +189,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     function process_payment($order_id) {
         $order = wc_get_order($order_id);
 
-        if (version_compare('2.7', $this->wcVersion)) {
+        if (version_compare('2.7', $this->wcVersion, '>')) {
             return array(
                 'result' => 'success',
                 'redirect' => add_query_arg(

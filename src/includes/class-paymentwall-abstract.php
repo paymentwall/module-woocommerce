@@ -220,7 +220,7 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
         $orderData['total'] = $order->get_total();
         $orderData['user_id'] = $order->get_user_id();
 
-        if (version_compare('2.7', $this->wcVersion)) {
+        if (version_compare('2.7', $this->wcVersion, '>')) {
             $orderData = array_merge($orderData, array(
                 'order_id' => $order->id,
                 'billing_city' => $order->billing_city,
@@ -252,7 +252,7 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
     }
 
     function get_subscription_data(WC_Subscription $subscription) {
-        if (version_compare('2.2', $this->wcsVersion)) {
+        if (version_compare('2.2', $this->wcsVersion, '>')) {
             $subsData = array(
                 'schedule_trial_end' => strtotime($subscription->schedule_trial_end),
                 'date_created' => strtotime($subscription->order_date),
