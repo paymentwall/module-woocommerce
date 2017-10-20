@@ -1,5 +1,4 @@
 <?php
-
 /*
  * Paymentwall Gateway for WooCommerce
  *
@@ -15,9 +14,13 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     public $has_fields = true;
 
     public function __construct() {
+        $this->supports = array(
+            'products',
+            'subscriptions'
+        );
+
         parent::__construct();
 
-        $this->icon = PW_PLUGIN_URL . '/assets/images/icon.png';
         $this->method_title = __('Paymentwall', PW_TEXT_DOMAIN);
         $this->method_description = __('Enables the Paymentwall Payment Solution. The easiest way to monetize your game or web service globally.', PW_TEXT_DOMAIN);
         $this->title = $this->settings['title'];
@@ -27,6 +30,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
         add_action('woocommerce_api_' . $this->id . '_gateway', array($this, 'handle_action'));
+
+        add_filter('woocommerce_subscription_payment_gateway_supports', array($this, 'add_feature_support_for_subscription'), 11, 3);
     }
 
     /**
@@ -47,19 +52,37 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $this->init_configs();
 
         $order = wc_get_order($order_id);
+        $orderData = $this->get_order_data($order);
 
-        $userId = $order->get_user_id();
+        try {
+            if (function_exists('wcs_order_contains_subscription') && wcs_order_contains_subscription($order)) {
+                $subscription = wcs_get_subscriptions_for_order($order);
+                $subscription = reset($subscription); // The current version does not support multi subscription
+                $subscriptionData = $this->prepare_subscription_data($order, $subscription);
+
+                $goods = array($subscriptionData['goods']);
+            } else {
+                $goods = array(
+                    new Paymentwall_Product($order_id, $orderData['total'], $orderData['currencyCode'], 'Order #' . $order_id)
+                );
+            }
+        } catch (Exception $e) {
+            wc_add_notice($e->getMessage(), 'error');
+        }
+
+        $userId = $orderData['user_id'];
         $widget = new Paymentwall_Widget(
-            empty($userId) ? $order->get_billing_email() : $order->get_user_id(),
+            empty($userId) ? $orderData['billing_email'] : $orderData['user_id'],
             $this->settings['widget'],
-            array(
-                new Paymentwall_Product($order_id, $order->get_total(), $order->get_currency(), 'Order #' . $order_id)
-            ),
+            $goods,
             array_merge(
                 array(
-                    'email' => $order->get_billing_email(),
+                    'email' => $orderData['billing_email'],
                     'integration_module' => 'woocommerce',
-                    'test_mode' => $this->settings['test_mode']
+                    'test_mode' => $this->settings['test_mode'],
+                    'show_post_trial_non_recurring' => (!empty($subscriptionData['showPostTrialNonRecurring'])) ? $subscriptionData['showPostTrialNonRecurring'] : 0,
+                    'success_url' => $order->get_checkout_order_received_url()
+
                 ),
                 $this->prepare_user_profile_data($order)
             )
@@ -83,6 +106,81 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         ));
     }
 
+    function prepare_subscription_data(WC_Order $order, WC_Subscription $subscription) {
+        $orderData = $this->get_order_data($order);
+        $subsData = $this->get_subscription_data($subscription);
+
+        $product = [
+            'id' => $orderData['order_id'],
+            'name' => sprintf(__('Order #%s  - recurring payment', PW_TEXT_DOMAIN), $order->get_order_number()),
+            'amount' => WC_Subscriptions_Order::get_recurring_total($order),
+            'currencyCode' => $orderData['currencyCode'],
+            'recurring' => true,
+            'productType' => Paymentwall_Product::TYPE_SUBSCRIPTION,
+            'periodLength' => $subsData['billing_interval'],
+            'periodType' => $subsData['billing_period'],
+
+        ];
+
+        $trialProduct = [
+            'id' => $orderData['order_id'],
+            'amount' => $orderData['total'],
+            'currencyCode' => $orderData['currencyCode'],
+            'recurring' => true,
+            'productType' => Paymentwall_Product::TYPE_SUBSCRIPTION,
+            'name' => sprintf(__('Order #%s  - first time payment', PW_TEXT_DOMAIN), $order->get_order_number()),
+            'periodType' => $subsData['trial_period'],
+        ];
+
+
+        if (!empty($subsData['schedule_trial_end'])) { // has trial
+            $trialLength = ($subsData['schedule_trial_end'] - $subsData['date_created']) / (3600*24);
+            $trialProduct['periodLength'] = intval($trialLength);
+            if ($orderData['total'] == 0) { // no setup fee
+                $showPostTrialNonRecurring = 1;
+            }
+        } else {
+            if ($orderData['total'] != WC_Subscriptions_Order::get_recurring_total($order)) { // has setup fee
+                $trialProduct['periodType'] = $subsData['billing_period'];
+                $trialProduct['periodLength'] = $subsData['billing_interval'];
+            } else {
+                $product['name'] = sprintf(__('Order #%s  - first time payment', PW_TEXT_DOMAIN), $order->get_order_number());
+                $trialProduct = null;
+            }
+        }
+
+        if (!empty($trialProduct)) {
+            $pwTrialProduct = new Paymentwall_Product(
+                $trialProduct['id'],
+                $trialProduct['amount'],
+                $trialProduct['currencyCode'],
+                $trialProduct['name'],
+                $trialProduct['productType'],
+                $trialProduct['periodLength'],
+                $trialProduct['periodType'],
+                $trialProduct['recurring']
+            );
+        } else {
+            $pwTrialProduct = null;
+        }
+
+        $pwProduct = new Paymentwall_Product(
+            $product['id'],
+            $product['amount'],
+            $product['currencyCode'],
+            $product['name'],
+            $product['productType'],
+            $product['periodLength'],
+            $product['periodType'],
+            $product['recurring'],
+            $pwTrialProduct
+        );
+        return array(
+            'goods' => $pwProduct,
+            'showPostTrialNonRecurring' => !empty($showPostTrialNonRecurring) ? $showPostTrialNonRecurring : 0
+        );
+    }
+
     /**
      * Process the order after payment is made
      * @param int $order_id
@@ -91,18 +189,31 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     function process_payment($order_id) {
         $order = wc_get_order($order_id);
 
-        return array(
-            'result' => 'success',
-            'redirect' => add_query_arg(
-                'key',
-                $order->get_order_key(),
-                add_query_arg(
-                    'order',
-                    !method_exists($order, 'get_id') ? $order->id : $order->get_id(),
+        if (version_compare('2.7', $this->wcVersion, '>')) {
+            return array(
+                'result' => 'success',
+                'redirect' => add_query_arg(
+                    'key',
+                    $order->order_key,
+                    add_query_arg(
+                        'order',
+                        $order->id,
+                        $order->get_checkout_payment_url(true)
+                    )
+                )
+            );
+        } else {
+            return array(
+                'result' => 'success',
+                'redirect' => add_query_arg(
+                    'key',
+                    $order->get_order_key(),
                     $order->get_checkout_payment_url(true)
                 )
-            )
-        );
+            );
+        }
+
+
     }
 
     /**
@@ -186,7 +297,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         );
 
         if ($order) {
-            if ($order->post_status == PW_ORDER_STATUS_PROCESSING) {
+            if ($order->get_status() == PW_ORDER_STATUS_PROCESSING) {
                 WC()->cart->empty_cart();
                 $return['status'] = true;
                 $return['url'] = get_permalink(wc_get_page_id('checkout')) . '/order-received/' . intval($_POST['order_id']) . '?key=' . $order->post->post_password;
@@ -232,5 +343,24 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             'is_test' => $this->settings['test_mode'] ? 1 : 0,
         );
     }
+
+    /**
+     * @param $is_supported
+     * @param $feature
+     * @param $subscription
+     * @return bool
+     */
+    public function add_feature_support_for_subscription($is_supported, $feature, $subscription) {
+        if ($this->id === $subscription->get_payment_method()) {
+
+            if ('gateway_scheduled_payments' === $feature) {
+                $is_supported = false;
+            } elseif (in_array($feature, $this->supports)) {
+                $is_supported = true;
+            }
+        }
+        return $is_supported;
+    }
+
 
 }
