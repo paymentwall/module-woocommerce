@@ -13,6 +13,7 @@
 class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
 
     public function __construct() {
+        parent::__construct();
         $this->supports = array(
             'products',
             'subscriptions',
@@ -29,7 +30,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             'subscription_date_changes',
         );
 
-        parent::__construct();
+
         add_action('woocommerce_subscription_cancelled_' . $this->id, array($this, 'cancel_subscription_action'));
         add_filter('woocommerce_subscription_payment_gateway_supports', array($this, 'add_feature_support_for_subscription'), 10, 3);
     }
