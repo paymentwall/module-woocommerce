@@ -79,7 +79,9 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
             'plugin_url' => PW_PLUGIN_URL
         ));
 
-        if ( apply_filters( 'wc_brick_display_save_payment_method_checkbox', $display_tokenization ) ) {
+        $hasSubscription = (class_exists( 'WC_Subscriptions_Cart' ) && WC_Subscriptions_Cart::cart_contains_subscription()) ? true : false;
+
+        if ( !$hasSubscription && apply_filters( 'wc_brick_display_save_payment_method_checkbox', $display_tokenization ) ) {
             $this->save_payment_method_checkbox();
         }
     }
