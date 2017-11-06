@@ -129,7 +129,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
                 'fingerprint' => $brick['fingerprint']
             ));
 
-        } elseif ($_POST['wc-brick-payment-token']){
+        } elseif (!empty($_POST['wc-brick-payment-token'])) {
             $token = WC_Payment_Tokens::get($_POST['wc-brick-payment-token'])->get_token();
             $data = array_merge($data, array(
                 'token' => $token
