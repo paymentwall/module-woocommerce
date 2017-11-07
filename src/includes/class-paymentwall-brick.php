@@ -175,6 +175,10 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         $responseData = json_decode($charge->getRawResponseData(), true);
 
         if ($charge->isSuccessful() && empty($responseData['secure'])) {
+            $return['result'] = 'success';
+            $return['redirect'] = $this->process_success($order, $charge, $message);
+            $return['message'] = $message;
+
             if (is_checkout() && !empty($_POST['wc-brick-new-payment-method']) && $_POST['wc-brick-payment-token'] == 'new') {
                 $token = new WC_Payment_Token_CC();
                 $token->set_token($responseData['card']['token']);
@@ -186,10 +190,6 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
                 $token->set_user_id(get_current_user_id());
                 $token->save();
             }
-
-            $return['result'] = 'success';
-            $return['redirect'] = $this->process_success($order, $charge, $message);
-            $return['message'] = $message;
         } elseif (!empty($responseData['secure'])) {
             WC()->session->set('orderId', !method_exists($order, 'get_id') ? $order->id : $order->get_id());
             $return['result'] = 'secure';
@@ -229,6 +229,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         $thanksPage = $this->get_return_url($order);
         WC()->session->set('orderId', null);
         WC()->cart->empty_cart();
+        unset($_POST['brick']);
         return $thanksPage;
     }
 
