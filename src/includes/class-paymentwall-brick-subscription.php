@@ -13,6 +13,7 @@
 class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
 
     public function __construct() {
+        parent::__construct();
         $this->supports = array(
             'products',
             'subscriptions',
@@ -29,7 +30,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             'subscription_date_changes',
         );
 
-        parent::__construct();
+
         add_action('woocommerce_subscription_cancelled_' . $this->id, array($this, 'cancel_subscription_action'));
         add_filter('woocommerce_subscription_payment_gateway_supports', array($this, 'add_feature_support_for_subscription'), 10, 3);
     }
@@ -44,6 +45,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
 
         $this->init_configs();
         $order = wc_get_order($order_id);
+
         try {
             if (wcs_order_contains_subscription($order)) {
                 $subscription = wcs_get_subscriptions_for_order($order);
@@ -136,20 +138,33 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
 
         $orderData = $this->get_order_data($order);
         $subscriptionData = $this->get_subscription_data($subscription);
-        return array_merge(
-            array(
+
+        $data = array(
+            'amount' => WC_Subscriptions_Order::get_recurring_total($order),
+            'currency' => $orderData['currencyCode'],
+            'email' => $orderData['billing_email'],
+            'description' => sprintf(__('%s - Order #%s', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
+            'plan' => $orderData['order_id'],
+            'period' => $subscriptionData['billing_period'],
+            'period_duration' => $subscriptionData['billing_interval'],
+            'secure_token' => (!empty($brick['cc_brick_secure_token'])) ? $brick['cc_brick_secure_token'] : null,
+            'charge_id' => (!empty($brick['cc_brick_charge_id'])) ? $brick['cc_brick_charge_id'] : null,
+        );
+
+        if ($brick['token'] && $brick['fingerprint']) {
+            $data = array_merge($data, array(
                 'token' => $brick['token'],
-                'amount' => WC_Subscriptions_Order::get_recurring_total($order),
-                'currency' => $orderData['currencyCode'],
-                'email' => $orderData['billing_email'],
-                'fingerprint' => $brick['fingerprint'],
-                'description' => sprintf(__('%s - Order #%s', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
-                'plan' => $orderData['order_id'],
-                'period' => $subscriptionData['billing_period'],
-                'period_duration' => $subscriptionData['billing_interval'],
-                'secure_token' => (!empty($brick['cc_brick_secure_token'])) ? $brick['cc_brick_secure_token'] : null,
-                'charge_id' => (!empty($brick['cc_brick_charge_id'])) ? $brick['cc_brick_charge_id'] : null,
-            ),
+                'fingerprint' => $brick['fingerprint']
+            ));
+        } elseif (!empty($_POST['wc-brick-payment-token'])) {
+            $token = WC_Payment_Tokens::get($_POST['wc-brick-payment-token'])->get_token();
+            $data = array_merge($data, array(
+                'token' => $token
+            ));
+        }
+
+        return array_merge(
+            $data,
             $trial_data
         );
     }
