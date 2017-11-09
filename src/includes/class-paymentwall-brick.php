@@ -12,10 +12,13 @@
 
 class Paymentwall_Brick extends Paymentwall_Abstract {
 
-    public $id = 'brick';
+    CONST BRICK_METHOD = 'brick';
+    public $id;
     public $has_fields = true;
 
     public function __construct() {
+        $this->id = self::BRICK_METHOD;
+
         parent::__construct();
 
         $this->icon = PW_PLUGIN_URL . '/assets/images/icon-creditcard.jpg';
@@ -79,7 +82,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
             'plugin_url' => PW_PLUGIN_URL
         ));
 
-        $hasSubscription = (class_exists( 'WC_Subscriptions_Cart' ) && WC_Subscriptions_Cart::cart_contains_subscription()) ? true : false;
+        $hasSubscription = class_exists( 'WC_Subscriptions_Cart' ) && WC_Subscriptions_Cart::cart_contains_subscription();
 
         if ( !$hasSubscription && apply_filters( 'wc_brick_display_save_payment_method_checkbox', $display_tokenization ) ) {
             $this->save_payment_method_checkbox();
@@ -234,9 +237,9 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
     }
 
     public static function get_available_payment_gateways( $available_gateways ) {
-        foreach ( $available_gateways as $gateway_id => $gateway ) {
-            if ( 'brick' == $gateway_id && is_add_payment_method_page()) {
-                unset( $available_gateways[ $gateway_id ] );
+        foreach ($available_gateways as $gateway_id => $gateway) {
+            if (self::BRICK_METHOD == $gateway_id && is_add_payment_method_page()) {
+                unset($available_gateways[ $gateway_id ]);
             }
         }
 
