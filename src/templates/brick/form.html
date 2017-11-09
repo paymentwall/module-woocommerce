@@ -70,9 +70,7 @@
         });
 
         jQuery('.paymentwall-brick-form').parent().prepend(jQuery('#brick-errors')).prepend(jQuery('#brick-loading'));
-        jQuery('.paymentwall-brick-form').find('#brick-errors').remove();
-        jQuery('.paymentwall-brick-form').find('#brick-loading').remove();
-
+        
         // Brick manipulate the checkout
         jQuery('form.checkout').unbind('checkout_place_order_{{payment_id}}').on('checkout_place_order_{{payment_id}}', function (e) {
             if (jQuery('input[name=wc-brick-payment-token]:checked').val() == 'new' || jQuery('input[name=wc-brick-payment-token]:checked').val() == undefined) {
