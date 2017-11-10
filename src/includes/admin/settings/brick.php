@@ -63,5 +63,13 @@ return array(
             '0' => 'No'
         ),
         'default' => '1'
+    ),
+    'saved_cards' => array(
+        'title' => __('Saved Cards', PW_TEXT_DOMAIN),
+        'lable' => __('Enable Payment via Saved Cards', PW_TEXT_DOMAIN),
+        'type' => 'checkbox',
+        'description' => __('If enabled, users will be able to pay with a saved card during checkout. Card details are saved on Paymentwall servers, not on your store', PW_TEXT_DOMAIN),
+        'default' => 'no',
+        'desc_tip' => true,
     )
 );
