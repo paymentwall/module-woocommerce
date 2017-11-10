@@ -44,6 +44,7 @@
                    placeholder="CVV" autocomplete="off"/>
         </span>
     </p>
+    <br/>
 </div>
 
 <script type="text/javascript">
@@ -52,15 +53,39 @@
             Brick_Payment.createBrick('{{public_key}}');
         }, 3000);
 
+        if (jQuery('input[name=wc-brick-payment-token]').length > 1) {
+            jQuery('input:radio[name=wc-brick-payment-token]:first').attr('checked', true);
+            jQuery('.paymentwall-brick-form').hide();
+
+        }
+
+        jQuery('input[name=wc-brick-payment-token]').click(function() {
+            if (jQuery(this).val() == 'new') {
+                jQuery('.paymentwall-brick-form').show();
+                jQuery('#brick-loading').hide();
+                jQuery('#brick-errors').hide();
+            } else {
+                jQuery('.paymentwall-brick-form').hide();
+            }
+        });
+
+        jQuery('.paymentwall-brick-form').parent().prepend(jQuery('#brick-errors')).prepend(jQuery('#brick-loading'));
+        
         // Brick manipulate the checkout
         jQuery('form.checkout').unbind('checkout_place_order_{{payment_id}}').on('checkout_place_order_{{payment_id}}', function (e) {
-            // Check token created
-            if (jQuery('#brick-get-token-success').val() == '1') {
-                jQuery('#brick-get-token-success').val(0)
-                return true;
+            if (jQuery('input[name=wc-brick-payment-token]:checked').val() == 'new' || jQuery('input[name=wc-brick-payment-token]:checked').val() == undefined) {
+                // Check token created
+                if (jQuery('#brick-get-token-success').val() == '1') {
+                    jQuery('#brick-get-token-success').val(0)
+                    return true;
+                }
+                Brick_Payment.brickTokenizeCard();
+                return false;
+            } else {
+                window.addEventListener("message", Brick_Payment.threeDSecureMessageHandle, false);
+                Brick_Payment.sendPaymentRequest();
+                return false;
             }
-            Brick_Payment.brickTokenizeCard();
-            return false;
         });
 
     });
