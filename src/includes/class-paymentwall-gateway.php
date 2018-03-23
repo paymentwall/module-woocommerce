@@ -1,5 +1,4 @@
 <?php
-
 /*
  * Paymentwall Gateway for WooCommerce
  *
@@ -9,15 +8,12 @@
  * License: The MIT License (MIT)
  *
  */
-
-class Paymentwall_Gateway extends Paymentwall_Abstract
-{
+class Paymentwall_Gateway extends Paymentwall_Abstract {
 
     public $id = 'paymentwall';
     public $has_fields = true;
 
-    public function __construct()
-    {
+    public function __construct() {
         $this->supports = array(
             'products',
             'subscriptions'
@@ -41,8 +37,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * Initial Paymentwall Configs
      */
-    function init_configs($isPingback = false)
-    {
+    function init_configs($isPingback = false) {
         Paymentwall_Config::getInstance()->set(array(
             'api_type' => Paymentwall_Config::API_GOODS,
             'public_key' => $this->settings['appkey'],
@@ -53,8 +48,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * @param $order_id
      */
-    function receipt_page($order_id)
-    {
+    function receipt_page($order_id) {
         $this->init_configs();
 
         $order = wc_get_order($order_id);
@@ -112,8 +106,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
         ));
     }
 
-    function prepare_subscription_data(WC_Order $order, WC_Subscription $subscription)
-    {
+    function prepare_subscription_data(WC_Order $order, WC_Subscription $subscription) {
         $orderData = $this->get_order_data($order);
         $subsData = $this->get_subscription_data($subscription);
 
@@ -126,6 +119,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
             'productType' => Paymentwall_Product::TYPE_SUBSCRIPTION,
             'periodLength' => $subsData['billing_interval'],
             'periodType' => $subsData['billing_period'],
+
         );
 
         $trialProduct = array(
@@ -140,7 +134,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
 
 
         if (!empty($subsData['schedule_trial_end'])) { // has trial
-            $trialLength = ($subsData['schedule_trial_end'] - $subsData['date_created']) / (3600 * 24);
+            $trialLength = ($subsData['schedule_trial_end'] - $subsData['date_created']) / (3600*24);
             $trialProduct['periodLength'] = intval($trialLength);
             if ($orderData['total'] == 0) { // no setup fee
                 $showPostTrialNonRecurring = 1;
@@ -192,8 +186,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
      * @param int $order_id
      * @return array
      */
-    function process_payment($order_id)
-    {
+    function process_payment($order_id) {
         $order = wc_get_order($order_id);
 
         if (version_compare('2.7', $this->wcVersion, '>')) {
@@ -226,8 +219,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * Check the response from Paymentwall's Servers
      */
-    function ipn_response()
-    {
+    function ipn_response() {
 
         $original_order_id = $_GET['goodsid'];
         $order = wc_get_order($_GET['goodsid']);
@@ -240,7 +232,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
         $payment->init_configs(true);
 
         $pingback_params = $_GET;
-
+        
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
         if ($pingback->validate()) {
 
@@ -250,16 +242,16 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
                     die(PW_DEFAULT_SUCCESS_PINGBACK_VALUE);
                 }
 
-                if (paymentwall_subscription_enable()) {
-                    $subscriptions = wcs_get_subscriptions_for_order($original_order_id, array('order_type' => 'parent'));
-                    $subscription = array_shift($subscriptions);
+                if(paymentwall_subscription_enable()) {
+                    $subscriptions = wcs_get_subscriptions_for_order( $original_order_id, array( 'order_type' => 'parent' ) );
+                    $subscription  = array_shift( $subscriptions );
                     $subscription_key = get_post_meta($original_order_id, '_subscription_id');
                 }
 
                 if ($pingback->getParameter('initial_ref') && (isset($subscription_key[0]) && $subscription_key[0] == $pingback->getParameter('initial_ref'))) {
                     $subscription->update_status('on-hold');
                     $subscription->add_order_note(__('Subscription renewal payment due: Status changed from Active to On hold.', PW_TEXT_DOMAIN));
-                    $new_order = wcs_create_renewal_order($subscription);
+                    $new_order = wcs_create_renewal_order( $subscription );
                     $new_order->add_order_note(__('Payment approved by Paymentwall - Transaction Id: ' . $pingback->getReferenceId(), PW_TEXT_DOMAIN));
                     update_post_meta(!method_exists($new_order, 'get_id') ? $new_order->id : $new_order->get_id(), '_subscription_id', $pingback->getReferenceId());
                     $new_order->set_payment_method($subscription->payment_gateway);
@@ -275,7 +267,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
                         'woocommerce_scheduled_subscription_payment',
                     );
 
-                    foreach ($hooks as $hook) {
+                    foreach($hooks as $hook) {
                         $result = wc_unschedule_action($hook, $action_args);
                     }
                 }
@@ -295,8 +287,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * Process Ajax Request
      */
-    function ajax_response()
-    {
+    function ajax_response() {
         $this->init_configs();
 
         $order = wc_get_order(intval($_POST['order_id']));
@@ -318,8 +309,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
     /**
      * Handle Action
      */
-    function handle_action()
-    {
+    function handle_action() {
         switch ($_GET['action']) {
             case 'ajax':
                 $this->ajax_response();
@@ -332,8 +322,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
         }
     }
 
-    function prepare_delivery_confirmation_data($order, $ref)
-    {
+    function prepare_delivery_confirmation_data($order, $ref) {
         return array(
             'payment_id' => $ref,
             'type' => 'digital',
@@ -361,8 +350,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract
      * @param $subscription
      * @return bool
      */
-    public function add_feature_support_for_subscription($is_supported, $feature, $subscription)
-    {
+    public function add_feature_support_for_subscription($is_supported, $feature, $subscription) {
         if ($this->id === $subscription->get_payment_method()) {
 
             if ('gateway_scheduled_payments' === $feature) {
