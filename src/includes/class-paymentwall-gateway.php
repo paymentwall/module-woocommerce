@@ -110,7 +110,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $orderData = $this->get_order_data($order);
         $subsData = $this->get_subscription_data($subscription);
 
-        $product = [
+        $product = array(
             'id' => $orderData['order_id'],
             'name' => sprintf(__('Order #%s  - recurring payment', PW_TEXT_DOMAIN), $order->get_order_number()),
             'amount' => WC_Subscriptions_Order::get_recurring_total($order),
@@ -120,9 +120,9 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             'periodLength' => $subsData['billing_interval'],
             'periodType' => $subsData['billing_period'],
 
-        ];
+        );
 
-        $trialProduct = [
+        $trialProduct = array(
             'id' => $orderData['order_id'],
             'amount' => $orderData['total'],
             'currencyCode' => $orderData['currencyCode'],
@@ -130,7 +130,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             'productType' => Paymentwall_Product::TYPE_SUBSCRIPTION,
             'name' => sprintf(__('Order #%s  - first time payment', PW_TEXT_DOMAIN), $order->get_order_number()),
             'periodType' => $subsData['trial_period'],
-        ];
+        );
 
 
         if (!empty($subsData['schedule_trial_end'])) { // has trial
@@ -234,7 +234,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $pingback_params = $_GET;
         
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
-        if ($pingback->validate()) {
+        if ($pingback->validate(true)) {
 
             if ($pingback->isDeliverable()) {
 
