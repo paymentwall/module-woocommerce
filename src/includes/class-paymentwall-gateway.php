@@ -234,7 +234,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $pingback_params = $_GET;
         
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
-        if ($pingback->validate()) {
+        if ($pingback->validate(true)) {
 
             if ($pingback->isDeliverable()) {
 
