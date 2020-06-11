@@ -33,9 +33,11 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
         add_action('woocommerce_api_' . $this->id . '_gateway', array($this, 'handle_action'));
 
-        //Payment System intergrade
+        //Payment System intergrate
         add_action('woocommerce_review_order_before_payment', array($this, 'html_payment_system'));
         add_action( 'woocommerce_checkout_update_order_meta',  array($this,'update_payment_system_order_meta'));
+        add_filter( 'woocommerce_checkout_order_processed', array($this,'customize_payment_gateways_title'),10 ,3);
+
 
         add_filter('woocommerce_subscription_payment_gateway_supports', array($this, 'add_feature_support_for_subscription'), 11, 3);
     }
@@ -101,10 +103,14 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
         // Clear shopping cart
         WC()->cart->empty_cart();
+        $paymentSystemName = $this->get_name_payment_system($orderData['pw_payment_system']);
+        if ($paymentSystemName == null) {
+            $paymentSystemName = 'Paymentwall';
+        }
 
         echo $this->get_template('widget.html', array(
             'orderId' => $order_id,
-            'title' => __('Please continue the purchase via Paymentwall using the widget below.', PW_TEXT_DOMAIN),
+            'title' => __(sprintf('Please continue the purchase via %s using the widget below.', $paymentSystemName), PW_TEXT_DOMAIN),
             'iframe' => $iframe,
             'baseUrl' => get_site_url(),
             'pluginUrl' => plugins_url('', __FILE__)
@@ -472,4 +478,37 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         return apply_filters( 'pw_get_ip', $ip );
     }
 
+    /**
+     * @param $ps_id
+     * @return mixed
+     */
+    function get_name_payment_system($ps_id){
+        $paymentSystem = json_decode($this->get_support_payment());
+        if (count($paymentSystem) > 0 ) {
+            foreach ($paymentSystem as $gateway) {
+                if ($gateway->id == $ps_id) {
+                    return $gateway->name;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param $order_id
+     * @param $posted_data
+     * @param $order
+     */
+    function customize_payment_gateways_title($order_id, $posted_data, $order)
+    {
+        $paymentSystemId = get_post_meta($order_id, 'pw_payment_system', true);
+        $paymentSystemName = $this->get_name_payment_system($paymentSystemId);
+        if ($paymentSystemName != null) {
+            $this->title = $paymentSystemName;
+            $this->method_title = $paymentSystemName;
+            $order->set_payment_method( $this );
+            $order->save();
+        }
+
+    }
 }
