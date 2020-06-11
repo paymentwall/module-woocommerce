@@ -362,6 +362,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      */
     public function add_feature_support_for_subscription($is_supported, $feature, $subscription) {
         if ($this->id === $subscription->get_payment_method()) {
+
             if ('gateway_scheduled_payments' === $feature) {
                 $is_supported = false;
             } elseif (in_array($feature, $this->supports)) {
@@ -401,7 +402,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      */
     public function html_payment_system() {
         $paymentSystem = json_decode($this->get_support_payment());
-        if (count($paymentSystem) > 0) {
+        if (count($paymentSystem) > 0 && is_array($paymentSystem)) {
             echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
             foreach ($paymentSystem as $gateway) {
                 ?>
@@ -465,7 +466,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * Get user IP
      * @return mixed|void
      */
-    public function get_the_user_ip() {
+    public function get_user_ip() {
         if ( ! empty($_SERVER['HTTP_CLIENT_IP']) ) {
         //check ip from share internet
             $ip = $_SERVER['HTTP_CLIENT_IP'];
@@ -475,14 +476,14 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         } else {
             $ip = $_SERVER['REMOTE_ADDR'];
         }
-        return apply_filters( 'pw_get_ip', $ip );
+        return $ip;
     }
 
     /**
      * @param $ps_id
      * @return mixed
      */
-    function get_name_payment_system($ps_id){
+    public function get_name_payment_system($ps_id){
         $paymentSystem = json_decode($this->get_support_payment());
         if (count($paymentSystem) > 0 ) {
             foreach ($paymentSystem as $gateway) {
@@ -499,7 +500,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * @param $posted_data
      * @param $order
      */
-    function customize_payment_gateways_title($order_id, $posted_data, $order)
+    private function customize_payment_gateways_title($order_id, $posted_data, $order)
     {
         $paymentSystemId = get_post_meta($order_id, 'pw_payment_system', true);
         $paymentSystemName = $this->get_name_payment_system($paymentSystemId);
