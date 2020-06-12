@@ -11,7 +11,8 @@
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
     const USER_ID_GEOLOCATION = 'user101';
-    
+    const PS_PARAM_TYPE = 'id';
+
     public $id = 'paymentwall';
     public $has_fields = true;
 
@@ -430,7 +431,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * Update payment system to order
      * @param $order_id
      */
-    function update_payment_system_order_meta( $order_id ) {
+    protected function update_payment_system_order_meta( $order_id ) {
         if ( ! empty($_POST['pw_payment_system'])) {
             update_post_meta($order_id, 'pw_payment_system', sanitize_text_field($_POST['pw_payment_system']));
         }
@@ -441,16 +442,17 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * @param string $type
      * @return mixed
      */
-    function get_payment_system_by_order_id($oderId, $type = 'id') {
+    public function get_payment_system_by_order_id($oderId, $type = self::PS_PARAM_TYPE) {
         if (is_int($oderId)) {
             $paymentSystem = json_decode(get_post_meta($oderId, 'pw_payment_system', true));
 
             if ($type == 'id') {
                 return $paymentSystem->id;
-            } else {
-                return $paymentSystem->name;
             }
+            return $paymentSystem->name;
+
         }
+        return null;
 
     }
 
@@ -512,6 +514,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             $prop = $paymentSystemName;
             return $prop;
         }
+        return $prop
     }
 
 }
