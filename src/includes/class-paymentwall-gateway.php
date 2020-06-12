@@ -105,7 +105,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
         // Clear shopping cart
         WC()->cart->empty_cart();
-        $paymentSystemName = $this->get_payment_system_by_order_id($order->get_id(), 'name');;
+        $paymentSystemName = $this->get_payment_system_by_order_id($order->get_id(), self::GET_PS_TYPE_NAME);
         if ($paymentSystemName == null) {
             $paymentSystemName = 'Paymentwall';
         }
@@ -447,7 +447,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     public function get_payment_system_by_order_id($orderId, $type) {
         if (is_int($orderId)) {
             $paymentSystem = json_decode(get_post_meta($orderId, 'pw_payment_system', true));
-            
+
             if ($type == self::GET_PS_TYPE_ID) {
                 return $paymentSystem->id;
             } elseif ($type == self::GET_PS_TYPE_NAME) {
