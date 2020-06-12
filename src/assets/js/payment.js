@@ -103,11 +103,11 @@ var Brick_Payment = {
 };
 
 (function ($) {
-    $(function(){
+    $( document ).ready(function() {
         $('.paymentwall-method .pw_payment_system').on('change', function () {
             var paymentSystem = $(this).data('payment-system');
             var inputPaymentSystem = $('#pw_gateway');
-            inputPaymentSystem.val(paymentSystem);
+            inputPaymentSystem.val(JSON.stringify(paymentSystem));
         })
     })
 })(jQuery);
