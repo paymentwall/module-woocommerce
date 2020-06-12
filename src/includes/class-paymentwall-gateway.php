@@ -112,7 +112,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
         echo $this->get_template('widget.html', array(
             'orderId' => $order_id,
-            'title' => __(sprintf('Please continue the purchase via %s using the widget below.', $paymentSystemName), PW_TEXT_DOMAIN),
+            'title' => sprintf(__('Please continue the purchase via %s using the widget below.', PW_TEXT_DOMAIN), $paymentSystemName),
             'iframe' => $iframe,
             'baseUrl' => get_site_url(),
             'pluginUrl' => plugins_url('', __FILE__)
@@ -382,7 +382,9 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $params = array(
             'key' =>  $this->settings['appkey'],
             'country_code' => $userCountry,
-            'sign_version' => 2
+            'sign_version' => 2,
+            'currencyCode' => get_woocommerce_currency(),
+            'amount' => WC()->cart->total
         );
 
         $params['sign'] = (new Paymentwall_Signature_Widget())->calculate(
@@ -390,12 +392,11 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             $params['sign_version']
         );
 
-        $url = 'https://api.paymentwall.com/api/payment-systems/?'.http_build_query($params);
+        $url = Paymentwall_Config::API_BASE_URL . '/payment-systems/?' . http_build_query($params);
         $curl = curl_init($url);
         curl_setopt($curl,CURLOPT_RETURNTRANSFER,TRUE);
 
         $response = curl_exec($curl);
-
         return $response;
     }
 
@@ -432,7 +433,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * Update payment system to order
      * @param $order_id
      */
-    protected function update_payment_system_order_meta( $order_id ) {
+    public function update_payment_system_order_meta($order_id) {
         if ( ! empty($_POST['pw_payment_system'])) {
             update_post_meta($order_id, 'pw_payment_system', sanitize_text_field($_POST['pw_payment_system']));
         }
@@ -446,7 +447,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     public function get_payment_system_by_order_id($orderId, $type) {
         if (is_int($orderId)) {
             $paymentSystem = json_decode(get_post_meta($orderId, 'pw_payment_system', true));
-
+            
             if ($type == self::GET_PS_TYPE_ID) {
                 return $paymentSystem->id;
             } elseif ($type == self::GET_PS_TYPE_NAME) {
@@ -479,7 +480,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             'uid' => self::USER_ID_GEOLOCATION,
             'user_ip' => $ip
         );
-        $url = 'https://api.paymentwall.com/api/rest/country?' . http_build_query($params);
+        $url = Paymentwall_Config::API_BASE_URL . '/rest/country?' . http_build_query($params);
         $curl = curl_init($url);
         curl_setopt($curl,CURLOPT_RETURNTRANSFER, TRUE);
         $response = curl_exec($curl);
@@ -512,11 +513,12 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     public function customize_payment_gateways_title($prop, $object)
     {
         $paymentSystemName = $this->get_payment_system_by_order_id($object->get_id(), self::GET_PS_TYPE_NAME);
+
         if ($object->get_payment_method() == $this->id && $paymentSystemName != '') {
             $prop = $paymentSystemName;
             return $prop;
         }
-        return $prop
+        return $prop;
     }
 
 }
