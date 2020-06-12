@@ -11,7 +11,8 @@
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
     const USER_ID_GEOLOCATION = 'user101';
-    const PS_PARAM_TYPE = 'id';
+    const GET_PS_TYPE_NAME = 'name';
+    const GET_PS_TYPE_ID = 'id';
 
     public $id = 'paymentwall';
     public $has_fields = true;
@@ -61,7 +62,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $this->init_configs();
         $order = wc_get_order($order_id);
         $orderData = $this->get_order_data($order);
-        $pwPsId = $this->get_payment_system_by_order_id($order->get_id());
+        $pwPsId = $this->get_payment_system_by_order_id($order->get_id(), self::GET_PS_TYPE_ID);
 
         try {
             if (function_exists('wcs_order_contains_subscription') && wcs_order_contains_subscription($order)) {
@@ -442,14 +443,15 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * @param string $type
      * @return mixed
      */
-    public function get_payment_system_by_order_id($oderId, $type = self::PS_PARAM_TYPE) {
-        if (is_int($oderId)) {
-            $paymentSystem = json_decode(get_post_meta($oderId, 'pw_payment_system', true));
+    public function get_payment_system_by_order_id($orderId, $type) {
+        if (is_int($orderId)) {
+            $paymentSystem = json_decode(get_post_meta($orderId, 'pw_payment_system', true));
 
-            if ($type == 'id') {
+            if ($type == self::GET_PS_TYPE_ID) {
                 return $paymentSystem->id;
+            } elseif ($type == self::GET_PS_TYPE_NAME) {
+                return $paymentSystem->name;
             }
-            return $paymentSystem->name;
 
         }
         return null;
@@ -509,7 +511,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      */
     public function customize_payment_gateways_title($prop, $object)
     {
-        $paymentSystemName = $this->get_payment_system_by_order_id($object->get_id(), 'name');
+        $paymentSystemName = $this->get_payment_system_by_order_id($object->get_id(), self::GET_PS_TYPE_NAME);
         if ($object->get_payment_method() == $this->id && $paymentSystemName != '') {
             $prop = $paymentSystemName;
             return $prop;
