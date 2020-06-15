@@ -38,7 +38,11 @@ class Paymentwall_Api {
         if (!empty($order) && $payment->settings['enable_delivery'] && ($payment->id == self::BRICK_METHOD || $payment->id == self::PAYMENTWALL_METHOD)) {
             // Delivery Confirmation
             $delivery = new Paymentwall_GenerericApiObject('delivery');
-            $delivery->post($this->prepare_delivery_confirmation_data($orderId, $deliveryStatus, $trackingData));
+            $response = $delivery->post($this->prepare_delivery_confirmation_data($orderId, $deliveryStatus, $trackingData));
+            echo '<pre>';
+            var_dump($response);
+            echo '</pre>';
+            die;
         }
     }
 
@@ -58,6 +62,7 @@ class Paymentwall_Api {
             'merchant_reference_id' => $order->id,
             'type' => $type,
             'status' => $deliveryStatus,
+            'estimated_update_datetime' => date('Y/m/d H:i:s'),
             "estimated_delivery_datetime" => !empty($trackingData['date_shipped']) ? date('Y-m-d H:i:s O', $trackingData['date_shipped']) : date('Y-m-d H:i:s O'),
             "carrier_tracking_id" => !empty($trackingData['tracking_number']) ? $trackingData['tracking_number'] : "N/A",
             "carrier_type" => !empty($trackingData['tracking_provider']) ? $trackingData['tracking_provider'] : (!empty($trackingData['custom_tracking_provider']) ? $trackingData['custom_tracking_provider'] : "N/A"),
