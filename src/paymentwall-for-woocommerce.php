@@ -87,6 +87,12 @@ add_action('admin_init', 'pw_child_plugin_has_parent_plugin');
 
 function sendDeliveryApi($orderId) {
     $paymentwallApi = new Paymentwall_Api();
-    $paymentwallApi->sendDeliveryApi($orderId);
+    $paymentwallApi->sendDeliveryApi($orderId, $paymentwallApi::DELIVERY_STATUS_DELIVERED);
 }
 add_action('woocommerce_order_status_completed', 'sendDeliveryApi');
+
+function sendDeliveryApiOrderPlace($orderId) {
+    $paymentwallApi = new Paymentwall_Api();
+    $paymentwallApi->sendDeliveryApi($orderId, $paymentwallApi::DELIVERY_STATUS_ORDER_PLACE);
+}
+add_action('woocommerce_order_status_processing', 'sendDeliveryApiOrderPlace');
