@@ -35,11 +35,10 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
         add_action('woocommerce_api_' . $this->id . '_gateway', array($this, 'handle_action'));
 
-        //Payment System intergrate
+        //Payment System integrate
         add_action('woocommerce_review_order_before_payment', array($this, 'html_payment_system'));
         add_action('woocommerce_checkout_update_order_meta',  array($this,'update_payment_system_order_meta'));
         add_filter('woocommerce_order_get_payment_method_title', array($this,'customize_payment_gateways_title'), 10, 2 );
-
 
         add_filter('woocommerce_subscription_payment_gateway_supports', array($this, 'add_feature_support_for_subscription'), 11, 3);
     }
@@ -62,7 +61,14 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $this->init_configs();
         $order = wc_get_order($order_id);
         $orderData = $this->get_order_data($order);
-        $pwPsId = $this->get_payment_system_by_order_id($order->get_id(), self::GET_PS_TYPE_ID);
+        $pwPsId = WC()->session->pw_ps;
+        $prepare_ps_param = [];
+        $paymentSystemName = $this->method_title;
+        
+        if (is_array($pwPsId) && count($pwPsId) > 0) {
+            $prepare_ps_param = array('ps' => $pwPsId['id']);
+            $paymentSystemName = $pwPsId['name'];
+        }
 
         try {
             if (function_exists('wcs_order_contains_subscription') && wcs_order_contains_subscription($order)) {
@@ -93,7 +99,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     'success_url' => $order->get_checkout_order_received_url()
                 ),
                 $this->prepare_user_profile_data($order),
-                $this->prepare_ps_param($pwPsId)
+                $prepare_ps_param
             )
         );
 
@@ -104,11 +110,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         ));
 
         // Clear shopping cart
+        unset(WC()->session->pw_ps);
         WC()->cart->empty_cart();
-        $paymentSystemName = $this->get_payment_system_by_order_id($order->get_id(), self::GET_PS_TYPE_NAME);
-        if ($paymentSystemName == null) {
-            $paymentSystemName = 'Paymentwall';
-        }
 
         echo $this->get_template('widget.html', array(
             'orderId' => $order_id,
@@ -374,59 +377,68 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         return $is_supported;
     }
 
+    /**
+     * @return array|bool|string
+     */
     public function get_support_payment() {
         $this->init_configs();
-        $uesrIp = $this->get_user_ip();
+        $uesrIp = $this->getRealClientIP();
         $userCountry = $this->get_country_by_ip($uesrIp);
+        if ($userCountry && $userCountry != '') {
+            $params = array(
+                'key' =>  $this->settings['appkey'],
+                'country_code' => $userCountry ,
+                'sign_version' => 2,
+                'currencyCode' => get_woocommerce_currency(),
+                'amount' => WC()->cart->total
+            );
 
-        $params = array(
-            'key' =>  $this->settings['appkey'],
-            'country_code' => $userCountry,
-            'sign_version' => 2,
-            'currencyCode' => get_woocommerce_currency(),
-            'amount' => WC()->cart->total
-        );
+            $params['sign'] = (new Paymentwall_Signature_Widget())->calculate(
+                $params,
+                $params['sign_version']
+            );
 
-        $params['sign'] = (new Paymentwall_Signature_Widget())->calculate(
-            $params,
-            $params['sign_version']
-        );
+            $url = Paymentwall_Config::API_BASE_URL . '/payment-systems/?' . http_build_query($params);
+            $curl = curl_init($url);
+            curl_setopt($curl,CURLOPT_RETURNTRANSFER,TRUE);
 
-        $url = Paymentwall_Config::API_BASE_URL . '/payment-systems/?' . http_build_query($params);
-        $curl = curl_init($url);
-        curl_setopt($curl,CURLOPT_RETURNTRANSFER,TRUE);
-
-        $response = curl_exec($curl);
-        return $response;
+            $response = curl_exec($curl);
+            return $response;
+        }
+        return null;
     }
 
     /**
      * Setup HTML payment method in checkout page
      */
     public function html_payment_system() {
-        $paymentSystem = json_decode($this->get_support_payment());
-        if (count($paymentSystem) > 0 && is_array($paymentSystem)) {
-            echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
-            foreach ($paymentSystem as $gateway) {
-                $dataPaymentSystem = array(
-                    'id'    => $gateway->id,
-                    'name'  => $gateway->name
-                );
+        $paymentSystem = $this->get_support_payment();
+        if ($paymentSystem != '') {
+            $paymentSystem = json_decode($paymentSystem);
+            if (is_array($paymentSystem) && count($paymentSystem) > 0 ) {
+                echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
+                foreach ($paymentSystem as $gateway) {
+                    $dataPaymentSystem = array(
+                        'id'    => $gateway->id,
+                        'name'  => $gateway->name
+                    );
+                    ?>
+                    <li class="wc_payment_method payment_method_paymentwall_ps">
+                        <input id="payment_method_<?php echo esc_attr( $gateway->id ); ?>" type="radio" class="input-radio pw_payment_system" name="payment_method" data-payment-system='<?php echo json_encode($dataPaymentSystem); ?>' value="paymentwall"  />
+                        <label for="payment_method_<?php echo esc_attr( $gateway->id ); ?>">
+                            <?php echo $gateway->name; ?> <img alt="<?php echo $gateway->name; ?>" src="<?php echo $gateway->img_url;?>">
+                        </label>
+                    </li>
+                    <?php
+                }
+                echo '</ul>';
                 ?>
-                <li class="wc_payment_method payment_method_paymentwall_ps">
-                    <input id="payment_method_<?php echo esc_attr( $gateway->id ); ?>" type="radio" class="input-radio pw_payment_system" name="payment_method" data-payment-system='<?php echo json_encode($dataPaymentSystem); ?>' value="paymentwall"  />
-                    <label for="payment_method_<?php echo esc_attr( $gateway->id ); ?>">
-                        <?php echo $gateway->name; ?> <img alt="<?php echo $gateway->name; ?>" src="<?php echo $gateway->img_url;?>">
-                    </label>
-                </li>
+                <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""  />
+                <style>li.wc_payment_method.payment_method_paymentwall{ display: none } .wc_payment_methods:not(.paymentwall-method){ margin-top: 1rem; } </style>
                 <?php
             }
-            echo '</ul>';
-            ?>
-            <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""  />
-            <?php
-            echo '<style>li.wc_payment_method.payment_method_paymentwall{ display: none } .wc_payment_methods:not(.paymentwall-method){ margin-top: 1rem; } </style>';
         }
+
     }
 
     /**
@@ -435,39 +447,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      */
     public function update_payment_system_order_meta($order_id) {
         if ( ! empty($_POST['pw_payment_system'])) {
-            update_post_meta($order_id, 'pw_payment_system', sanitize_text_field($_POST['pw_payment_system']));
+            WC()->session->pw_ps =   json_decode(stripslashes($_POST['pw_payment_system']), true);
         }
-    }
-
-    /**
-     * @param $oderId
-     * @param string $type
-     * @return mixed
-     */
-    public function get_payment_system_by_order_id($orderId, $type) {
-        if (is_int($orderId)) {
-            $paymentSystem = json_decode(get_post_meta($orderId, 'pw_payment_system', true));
-
-            if ($type == self::GET_PS_TYPE_ID) {
-                return $paymentSystem->id;
-            } elseif ($type == self::GET_PS_TYPE_NAME) {
-                return $paymentSystem->name;
-            }
-
-        }
-        return null;
-
-    }
-
-    /**
-     * @param $orderData
-     * @return array
-     */
-    protected function prepare_ps_param($pwPsId) {
-        if (isset($pwPsId)) {
-            return array('ps' => $pwPsId);
-        }
-        return array();
     }
 
     /**
@@ -484,25 +465,11 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $curl = curl_init($url);
         curl_setopt($curl,CURLOPT_RETURNTRANSFER, TRUE);
         $response = curl_exec($curl);
-        $response = json_decode($response);
-        return $response->code;
-    }
-
-    /**
-     * Get user IP
-     * @return mixed|void
-     */
-    public function get_user_ip() {
-        if ( ! empty($_SERVER['HTTP_CLIENT_IP']) ) {
-        //check ip from share internet
-            $ip = $_SERVER['HTTP_CLIENT_IP'];
-        } elseif ( ! empty($_SERVER['HTTP_X_FORWARDED_FOR']) ) {
-        //to check ip is pass from proxy
-            $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-        } else {
-            $ip = $_SERVER['REMOTE_ADDR'];
+        if (curl_error($curl)) {
+            return false;
         }
-        return $ip;
+        $response = json_decode($response, true);
+        return $response['code'];
     }
 
     /**
@@ -512,11 +479,10 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      */
     public function customize_payment_gateways_title($prop, $object)
     {
-        $paymentSystemName = $this->get_payment_system_by_order_id($object->get_id(), self::GET_PS_TYPE_NAME);
+        $paymentSystemName = WC()->session->pw_ps;
 
-        if ($object->get_payment_method() == $this->id && $paymentSystemName != '') {
-            $prop = $paymentSystemName;
-            return $prop;
+        if ($object->get_payment_method() == $this->id && is_array($paymentSystemName) && count($paymentSystemName) > 0) {
+            return $paymentSystemName['name'];
         }
         return $prop;
     }
