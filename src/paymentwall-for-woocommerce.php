@@ -96,3 +96,49 @@ function sendDeliveryApiOrderPlace($orderId) {
     $paymentwallApi->sendDeliveryApi($orderId, $paymentwallApi::DELIVERY_STATUS_ORDER_PLACE);
 }
 add_action('woocommerce_order_status_processing', 'sendDeliveryApiOrderPlace');
+
+function sendDeliveryApiOrderShipped($meta_id, $post_id, $meta_key, $meta_value) {
+    if ($meta_key != '_wc_shipment_tracking_items'){
+        return;
+    }
+
+    $order = wc_get_order($post_id);
+    if (!$order) {
+        return;
+    }
+
+    // if is virtual
+    if (fp_is_virtual($order)) {
+        return;
+    }
+
+    $trackingData = $meta_value;
+    if (empty($trackingData) || empty($trackingData[count($trackingData) - 1])) {
+        return;
+    }
+    $trackingData = $trackingData[0];
+
+    $paymentwallApi = new Paymentwall_Api();
+    $paymentwallApi->sendDeliveryApi($post_id, $paymentwallApi::DELIVERY_STATUS_ORDER_SHIPPED, $trackingData);
+}
+add_action( 'added_post_meta', 'sendDeliveryApiOrderShipped', 10, 4 );
+add_action( 'update_post_meta', 'sendDeliveryApiOrderShipped', 10, 4 );
+
+function pw_is_virtual(WC_Order $order) {
+    $items = $order->get_items();
+    foreach ($items as $item) {
+        if ($item->is_type('line_item')) {
+            $product = $item->get_product();
+
+            if (!$product) {
+                continue;
+            }
+
+            if ($product->is_virtual()) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
