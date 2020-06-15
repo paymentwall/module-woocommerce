@@ -108,10 +108,10 @@ function sendDeliveryApiOrderShipped($meta_id, $post_id, $meta_key, $meta_value)
     }
 
     // if is virtual
-    if (fp_is_virtual($order)) {
+    if (pw_is_virtual($order)) {
         return;
     }
-
+    
     $trackingData = $meta_value;
     if (empty($trackingData) || empty($trackingData[count($trackingData) - 1])) {
         return;
