@@ -38,11 +38,7 @@ class Paymentwall_Api {
         if (!empty($order) && $payment->settings['enable_delivery'] && ($payment->id == self::BRICK_METHOD || $payment->id == self::PAYMENTWALL_METHOD)) {
             // Delivery Confirmation
             $delivery = new Paymentwall_GenerericApiObject('delivery');
-            $response = $delivery->post($this->prepare_delivery_confirmation_data($orderId, $deliveryStatus, $trackingData));
-            echo '<pre>';
-            var_dump($response);
-            echo '</pre>';
-            die;
+            $delivery->post($this->prepare_delivery_confirmation_data($orderId, $deliveryStatus, $trackingData));
         }
     }
 
