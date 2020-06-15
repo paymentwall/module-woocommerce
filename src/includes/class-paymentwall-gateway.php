@@ -66,10 +66,10 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $preparePsParam = [];
         $paymentSystemName = $this->method_title;
 
-        if ( ! empty($selectedPs['id'])) {
+        if (!empty($selectedPs['id'])) {
             $preparePsParam = array('ps' => $selectedPs['id']);
         }
-        if ( ! empty($selectedPs['name'])) {
+        if (!empty($selectedPs['name'])) {
             $paymentSystemName = $selectedPs['name'];
         }
 
@@ -408,9 +408,11 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 return null;
             }
             $response = curl_exec($curl);
-            return $response;
+            if ($response != '') {
+                return json_decode($response);
+            }
         }
-        return null;
+        return [];
     }
 
     /**
@@ -418,32 +420,28 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      */
     public function html_payment_system() {
         $paymentSystems = $this->get_local_payments();
-        if ($paymentSystems != '') {
-            $paymentSystems = json_decode($paymentSystems);
-            if (is_array($paymentSystems) && count($paymentSystems) > 0 ) {
-                echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
-                foreach ($paymentSystems as $gateway) {
-                    $dataPaymentSystem = array(
-                        'id'    => $gateway->id,
-                        'name'  => $gateway->name
-                    );
-                    ?>
-                    <li class="wc_payment_method payment_method_paymentwall_ps">
-                        <input id="payment_method_<?php echo esc_attr( $gateway->id ); ?>" type="radio" class="input-radio pw_payment_system" name="payment_method" data-payment-system='<?php echo json_encode($dataPaymentSystem); ?>' value="paymentwall"  />
-                        <label for="payment_method_<?php echo esc_attr( $gateway->id ); ?>">
-                            <?php echo $gateway->name; ?> <img alt="<?php echo $gateway->name; ?>" src="<?php echo $gateway->img_url;?>">
-                        </label>
-                    </li>
-                    <?php
-                }
-                echo '</ul>';
+        if (is_array($paymentSystems) && !empty($paymentSystems)) {
+            echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
+            foreach ($paymentSystems as $gateway) {
+                $dataPaymentSystem = array(
+                    'id'    => $gateway->id,
+                    'name'  => $gateway->name
+                );
                 ?>
-                <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""  />
-                <style>li.wc_payment_method.payment_method_paymentwall{ display: none } .wc_payment_methods:not(.paymentwall-method){ margin-top: 1rem; } </style>
+                <li class="wc_payment_method payment_method_paymentwall_ps">
+                    <input id="payment_method_<?php echo esc_attr( $gateway->id ); ?>" type="radio" class="input-radio pw_payment_system" name="payment_method" data-payment-system='<?php echo json_encode($dataPaymentSystem); ?>' value="paymentwall"  />
+                    <label for="payment_method_<?php echo esc_attr( $gateway->id ); ?>">
+                        <?php echo $gateway->name; ?> <img alt="<?php echo $gateway->name; ?>" src="<?php echo $gateway->img_url;?>">
+                    </label>
+                </li>
                 <?php
             }
+            echo '</ul>';
+            ?>
+            <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""  />
+            <style>li.wc_payment_method.payment_method_paymentwall{ display: none } .wc_payment_methods:not(.paymentwall-method){ margin-top: 1rem; } </style>
+            <?php
         }
-
     }
 
     /**
@@ -451,7 +449,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * @param $order_id
      */
     public function update_payment_system_order_meta($order_id) {
-        if ( ! empty($_POST['pw_payment_system'])) {
+        if (!empty($_POST['pw_payment_system'])) {
             WC()->session->pw_ps =   json_decode(stripslashes($_POST['pw_payment_system']), true);
         }
     }
@@ -474,7 +472,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             return null;
         }
         $response = json_decode($response, true);
-        if ( ! empty($response['code'])) {
+        if (!empty($response['code'])) {
             return $response['code'];
         }
         return null;
@@ -488,7 +486,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     public function get_payment_method_title($prop, $object)
     {
         $paymentSystemName = WC()->session->pw_ps;
-        if ($object->get_payment_method() == $this->id && ! empty($paymentSystemName)) {
+        if ($object->get_payment_method() == $this->id && !empty($paymentSystemName)) {
             return $paymentSystemName['name'];
         }
         return $prop;
