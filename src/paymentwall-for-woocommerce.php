@@ -87,13 +87,13 @@ add_action('admin_init', 'pw_child_plugin_has_parent_plugin');
 
 function sendDeliveryApi($orderId) {
     $paymentwallApi = new Paymentwall_Api();
-    $paymentwallApi->sendDeliveryApi($orderId, $paymentwallApi::DELIVERY_STATUS_DELIVERED);
+    $paymentwallApi->sendDeliveryApi($orderId, Paymentwall_Api::DELIVERY_STATUS_DELIVERED);
 }
 add_action('woocommerce_order_status_completed', 'sendDeliveryApi');
 
 function sendDeliveryApiOrderPlace($orderId) {
     $paymentwallApi = new Paymentwall_Api();
-    $paymentwallApi->sendDeliveryApi($orderId, $paymentwallApi::DELIVERY_STATUS_ORDER_PLACE);
+    $paymentwallApi->sendDeliveryApi($orderId, Paymentwall_Api::DELIVERY_STATUS_ORDER_PLACE);
 }
 add_action('woocommerce_order_status_processing', 'sendDeliveryApiOrderPlace');
 
@@ -111,7 +111,7 @@ function sendDeliveryApiOrderShipped($meta_id, $post_id, $meta_key, $meta_value)
     if (pw_is_virtual($order)) {
         return;
     }
-    
+
     $trackingData = $meta_value;
     if (empty($trackingData) || empty($trackingData[count($trackingData) - 1])) {
         return;
@@ -119,7 +119,7 @@ function sendDeliveryApiOrderShipped($meta_id, $post_id, $meta_key, $meta_value)
     $trackingData = $trackingData[0];
 
     $paymentwallApi = new Paymentwall_Api();
-    $paymentwallApi->sendDeliveryApi($post_id, $paymentwallApi::DELIVERY_STATUS_ORDER_SHIPPED, $trackingData);
+    $paymentwallApi->sendDeliveryApi($post_id, Paymentwall_Api::DELIVERY_STATUS_ORDER_SHIPPED, $trackingData);
 }
 add_action( 'added_post_meta', 'sendDeliveryApiOrderShipped', 10, 4 );
 add_action( 'update_post_meta', 'sendDeliveryApiOrderShipped', 10, 4 );
