@@ -39,6 +39,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         add_action('woocommerce_review_order_before_payment', array($this, 'html_payment_system'));
         add_action('woocommerce_checkout_update_order_meta',  array($this,'update_payment_system_order_meta'));
         add_filter('woocommerce_order_get_payment_method_title', array($this,'customize_payment_gateways_title'), 10, 2 );
+        add_action('woocommerce_get_order_item_totals', array($this,'change_payment_title_in_thankyou_page'), 10, 3);
 
         add_filter('woocommerce_subscription_payment_gateway_supports', array($this, 'add_feature_support_for_subscription'), 11, 3);
     }
@@ -64,7 +65,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $pwPsId = WC()->session->pw_ps;
         $prepare_ps_param = [];
         $paymentSystemName = $this->method_title;
-        
+
         if (is_array($pwPsId) && count($pwPsId) > 0) {
             $prepare_ps_param = array('ps' => $pwPsId['id']);
             $paymentSystemName = $pwPsId['name'];
@@ -110,7 +111,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         ));
 
         // Clear shopping cart
-        unset(WC()->session->pw_ps);
         WC()->cart->empty_cart();
 
         echo $this->get_template('widget.html', array(
@@ -480,11 +480,23 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     public function customize_payment_gateways_title($prop, $object)
     {
         $paymentSystemName = WC()->session->pw_ps;
-
         if ($object->get_payment_method() == $this->id && is_array($paymentSystemName) && count($paymentSystemName) > 0) {
             return $paymentSystemName['name'];
         }
         return $prop;
+    }
+
+    public function change_payment_title_in_thankyou_page($total_rows, $order, $tax_display){
+        $paymentSystemName = WC()->session->pw_ps;
+        if (
+                is_array($paymentSystemName)
+                && count($paymentSystemName) > 0
+                && $total_rows['payment_method']['value'] == $this->method_title
+        ) {
+            $total_rows['payment_method']['value'] = $paymentSystemName['name'];
+            unset(WC()->session->pw_ps);
+        }
+        return $total_rows;
     }
 
 }
