@@ -10,6 +10,8 @@
  */
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
+    const USER_ID_GEOLOCATION = 'user101';
+
     public $id = 'paymentwall';
     public $has_fields = true;
 
@@ -31,6 +33,11 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
         add_action('woocommerce_api_' . $this->id . '_gateway', array($this, 'handle_action'));
 
+        add_action('woocommerce_review_order_before_payment', array($this, 'html_payment_system'));
+        add_action('woocommerce_checkout_update_order_meta',  array($this,'update_payment_system_order_meta'));
+        add_filter('woocommerce_order_get_payment_method_title', array($this,'get_payment_method_title'), 10, 2 );
+        add_filter('woocommerce_get_order_item_totals', array($this,'update_payment_title_by_selected_method'), 10, 3);
+
         add_filter('woocommerce_subscription_payment_gateway_supports', array($this, 'add_feature_support_for_subscription'), 11, 3);
     }
 
@@ -50,9 +57,18 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      */
     function receipt_page($order_id) {
         $this->init_configs();
-
         $order = wc_get_order($order_id);
         $orderData = $this->get_order_data($order);
+        $selectedPs = WC()->session->pw_ps;
+        $preparedPsParam = [];
+        $paymentSystemName = $this->method_title;
+
+        if (!empty($selectedPs['id'])) {
+            $preparedPsParam = array('ps' => $selectedPs['id']);
+        }
+        if (!empty($selectedPs['name'])) {
+            $paymentSystemName = $selectedPs['name'];
+        }
 
         try {
             if (function_exists('wcs_order_contains_subscription') && wcs_order_contains_subscription($order)) {
@@ -69,7 +85,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         } catch (Exception $e) {
             wc_add_notice($e->getMessage(), 'error');
         }
-
         $userId = $orderData['user_id'];
         $widget = new Paymentwall_Widget(
             empty($userId) ? $orderData['billing_email'] : $orderData['user_id'],
@@ -82,9 +97,9 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     'test_mode' => $this->settings['test_mode'],
                     'show_post_trial_non_recurring' => (!empty($subscriptionData['showPostTrialNonRecurring'])) ? $subscriptionData['showPostTrialNonRecurring'] : 0,
                     'success_url' => $order->get_checkout_order_received_url()
-
                 ),
-                $this->prepare_user_profile_data($order)
+                $this->prepare_user_profile_data($order),
+                $preparedPsParam
             )
         );
 
@@ -99,7 +114,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
         echo $this->get_template('widget.html', array(
             'orderId' => $order_id,
-            'title' => __('Please continue the purchase via Paymentwall using the widget below.', PW_TEXT_DOMAIN),
+            'title' => sprintf(__('Please continue the purchase via %s using the widget below.', PW_TEXT_DOMAIN), $paymentSystemName),
             'iframe' => $iframe,
             'baseUrl' => get_site_url(),
             'pluginUrl' => plugins_url('', __FILE__)
@@ -213,7 +228,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             );
         }
 
-
     }
 
     /**
@@ -242,7 +256,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     die(PW_DEFAULT_SUCCESS_PINGBACK_VALUE);
                 }
 
-                if(paymentwall_subscription_enable()) {
+                if (paymentwall_subscription_enable()) {
                     $subscriptions = wcs_get_subscriptions_for_order( $original_order_id, array( 'order_type' => 'parent' ) );
                     $subscription  = array_shift( $subscriptions );
                     $subscription_key = get_post_meta($original_order_id, '_subscription_id');
@@ -267,7 +281,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                         'woocommerce_scheduled_subscription_payment',
                     );
 
-                    foreach($hooks as $hook) {
+                    foreach ($hooks as $hook) {
                         $result = wc_unschedule_action($hook, $action_args);
                     }
                 }
@@ -362,5 +376,148 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         return $is_supported;
     }
 
+    /**
+     * @return array|bool|string
+     */
+    public function get_local_payments() {
+
+        $paymentMethods = [];
+
+        $this->init_configs();
+        $uesrIp = $this->getRealClientIP();
+        $userCountry = $this->get_country_by_ip($uesrIp);
+
+        if (!empty($userCountry)) {
+            $params = array(
+                'key' =>  $this->settings['appkey'],
+                'country_code' => $userCountry ,
+                'sign_version' => 2,
+                'currencyCode' => get_woocommerce_currency(),
+                'amount' => WC()->cart->total
+            );
+
+            $params['sign'] = (new Paymentwall_Signature_Widget())->calculate(
+                $params,
+                $params['sign_version']
+            );
+
+            $url = Paymentwall_Config::API_BASE_URL . '/payment-systems/?' . http_build_query($params);
+            $curl = curl_init($url);
+            curl_setopt($curl,CURLOPT_RETURNTRANSFER,TRUE);
+
+            if (curl_error($curl)) {
+                return $paymentMethods;
+            }
+
+            $response = curl_exec($curl);
+            $paymentMethods = $this->prepare_payment_methods_from_api_response($response);
+
+        }
+        return $paymentMethods;
+    }
+
+    public function prepare_payment_methods_from_api_response($response) {
+
+        $methods = [];
+
+        $array = json_decode($response, true);
+
+        foreach ($array as $ps) {
+            if (!empty($ps['id']) && !empty($ps['name'])) {
+                $methods[] = [
+                    'id' => $ps['id'],
+                    'name' => $ps['name'],
+                    'img_url' => !empty($ps['img_url']) ? $ps['img_url'] : ''
+                ];
+            }
+        }
+
+        return $methods;
+    }
+
+    public function html_payment_system() {
+        $paymentSystems = $this->get_local_payments();
+        if (is_array($paymentSystems) && !empty($paymentSystems)) {
+            echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
+            foreach ($paymentSystems as $gateway) {
+                $dataPaymentSystem = array(
+                    'id'    => $gateway['id'],
+                    'name'  => $gateway['name']
+                );
+                ?>
+                <li class="wc_payment_method payment_method_paymentwall_ps">
+                    <input id="payment_method_<?php echo esc_attr( $gateway['id'] ); ?>" type="radio" class="input-radio pw_payment_system" name="payment_method" data-payment-system='<?php echo json_encode($dataPaymentSystem); ?>' value="paymentwall"  />
+                    <label for="payment_method_<?php echo esc_attr( $gateway['id'] ); ?>">
+                        <?php echo $gateway['name']; ?> <img alt="<?php echo $gateway['name']; ?>" src="<?php echo $gateway['img_url'];?>">
+                    </label>
+                </li>
+                <?php
+            }
+            echo '</ul>';
+            ?>
+            <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""  />
+            <style>li.wc_payment_method.payment_method_paymentwall{ display: none } .wc_payment_methods:not(.paymentwall-method){ margin-top: 1rem; } </style>
+            <?php
+        }
+    }
+
+    /**
+     * Update payment system to order
+     */
+    public function update_payment_system_order_meta() {
+        if (!empty($_POST['pw_payment_system'])) {
+            WC()->session->pw_ps = json_decode(stripslashes($_POST['pw_payment_system']), true);
+        }
+    }
+
+    /**
+     * Get user country by IP
+     * @return mixed
+     */
+    public function get_country_by_ip($ip) {
+        $params = array(
+            'key' => $this->settings['appkey'],
+            'uid' => self::USER_ID_GEOLOCATION,
+            'user_ip' => $ip
+        );
+        $url = Paymentwall_Config::API_BASE_URL . '/rest/country?' . http_build_query($params);
+        $curl = curl_init($url);
+        curl_setopt($curl,CURLOPT_RETURNTRANSFER, TRUE);
+        $response = curl_exec($curl);
+        if (curl_error($curl)) {
+            return null;
+        }
+        $response = json_decode($response, true);
+        if (!empty($response['code'])) {
+            return $response['code'];
+        }
+        return null;
+    }
+
+    /**
+     * @param $order_id
+     * @param $posted_data
+     * @param $order
+     */
+    public function get_payment_method_title($prop, $object)
+    {
+        $paymentSystemName = WC()->session->pw_ps;
+        if ($object->get_payment_method() == $this->id && !empty($paymentSystemName)) {
+            return $paymentSystemName['name'];
+        }
+        return $prop;
+    }
+
+    public function update_payment_title_by_selected_method($total_rows, $order, $tax_display){
+        $selectedPaymentMethod = WC()->session->pw_ps;
+        if (
+            !empty($selectedPaymentMethod['name'])
+            && $total_rows['payment_method']['value'] == $this->method_title
+        ) {
+            $total_rows['payment_method']['value'] = $selectedPaymentMethod['name'];
+            unset(WC()->session->pw_ps);
+        }
+        return $total_rows;
+    }
 
 }
