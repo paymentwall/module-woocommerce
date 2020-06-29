@@ -107,24 +107,24 @@ function sendDeliveryApiOrderShipped($meta_id, $post_id, $meta_key, $meta_value)
         return;
     }
 
-    // if is virtual
-    if (pw_is_virtual($order)) {
+    if (check_order_has_virtual_product($order)) {
         return;
     }
 
-    $trackingData = $meta_value;
-    if (empty($trackingData) || empty($trackingData[count($trackingData) - 1])) {
+    $trackingData = !is_array($meta_value) ? unserialize($meta_value) : $meta_value;
+
+    if (empty($trackingData) || !is_array($trackingData)) {
         return;
     }
-    $trackingData = $trackingData[0];
+
+    $trackingData = end($trackingData);
 
     $paymentwallApi = new Paymentwall_Api();
     $paymentwallApi->sendDeliveryApi($post_id, Paymentwall_Api::DELIVERY_STATUS_ORDER_SHIPPED, $trackingData);
 }
 add_action( 'added_post_meta', 'sendDeliveryApiOrderShipped', 10, 4 );
-add_action( 'update_post_meta', 'sendDeliveryApiOrderShipped', 10, 4 );
 
-function pw_is_virtual(WC_Order $order) {
+function check_order_has_virtual_product(WC_Order $order) {
     $items = $order->get_items();
     foreach ($items as $item) {
         if ($item->is_type('line_item')) {
