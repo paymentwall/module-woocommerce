@@ -11,8 +11,6 @@
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
     const USER_ID_GEOLOCATION = 'user101';
-    const GET_PS_TYPE_NAME = 'name';
-    const GET_PS_TYPE_ID = 'id';
 
     public $id = 'paymentwall';
     public $has_fields = true;
