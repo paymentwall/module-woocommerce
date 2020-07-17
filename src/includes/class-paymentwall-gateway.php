@@ -535,22 +535,22 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     }
 
     public function get_data_from_session($name) {
-
-        $dataFromSession = $_SESSION['paymentwall_data'];
+        $pwSessionData = $_SESSION['paymentwall_data'];
         if (
-            !empty($dataFromSession[$name]['data'])
-            && !empty($dataFromSession[$name]['expired_time'])
-            && $dataFromSession[$name]['expired_time'] > time()
+            !empty($pwSessionData[$name]['data'])
+            && !empty($pwSessionData[$name]['expired_time'])
+            && $pwSessionData[$name]['expired_time'] > time()
         ) {
-            return $dataFromSession[$name]['data'];
+            return $pwSessionData[$name]['data'];
         }
         return null;
     }
 
     public function save_data_to_session($name, $data) {
+        $pwSessionData = $_SESSION['paymentwall_data'];
         if (!empty($name) && !empty($data)) {
-            $_SESSION['paymentwall_data'][$name]['data'] = $data;
-            $_SESSION['paymentwall_data'][$name]['expired_time'] = time() + self::PS_TIME_BUFFER;
+            $pwSessionData[$name]['data'] = $data;
+            $pwSessionData[$name]['expired_time'] = time() + self::PS_TIME_BUFFER;
         }
     }
 
