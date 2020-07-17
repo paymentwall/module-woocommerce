@@ -11,6 +11,7 @@
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
     const USER_ID_GEOLOCATION = 'user101';
+    const PS_TIME_BUFFER = 600;
 
     public $id = 'paymentwall';
     public $has_fields = true;
@@ -379,39 +380,48 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     /**
      * @return array|bool|string
      */
-    public function get_local_payments() {
+    public function get_local_payment_methods() {
 
         $paymentMethods = [];
+        $psCreateTime =  !empty($_SESSION['local_payments_create_time']) ? (int)$_SESSION['local_payments_create_time'] : 0;
+        if (
+            empty($_SESSION['local_payments']) ||
+            time() > $psCreateTime + self::PS_TIME_BUFFER
+        ) {
+            $_SESSION['local_payments_create_time'] = 1594974792;
+            $this->init_configs();
+            $uesrIp = $this->getRealClientIP();
+            $userCountry = $this->get_country_by_ip($uesrIp);
 
-        $this->init_configs();
-        $uesrIp = $this->getRealClientIP();
-        $userCountry = $this->get_country_by_ip($uesrIp);
+            if (!empty($userCountry)) {
+                $params = array(
+                    'key' => $this->settings['appkey'],
+                    'country_code' => $userCountry,
+                    'sign_version' => 2,
+                    'currencyCode' => get_woocommerce_currency(),
+                    'amount' => WC()->cart->total
+                );
 
-        if (!empty($userCountry)) {
-            $params = array(
-                'key' =>  $this->settings['appkey'],
-                'country_code' => $userCountry ,
-                'sign_version' => 2,
-                'currencyCode' => get_woocommerce_currency(),
-                'amount' => WC()->cart->total
-            );
+                $params['sign'] = (new Paymentwall_Signature_Widget())->calculate(
+                    $params,
+                    $params['sign_version']
+                );
 
-            $params['sign'] = (new Paymentwall_Signature_Widget())->calculate(
-                $params,
-                $params['sign_version']
-            );
+                $url = Paymentwall_Config::API_BASE_URL . '/payment-systems/?' . http_build_query($params);
+                $curl = curl_init($url);
+                curl_setopt($curl, CURLOPT_RETURNTRANSFER, TRUE);
 
-            $url = Paymentwall_Config::API_BASE_URL . '/payment-systems/?' . http_build_query($params);
-            $curl = curl_init($url);
-            curl_setopt($curl,CURLOPT_RETURNTRANSFER,TRUE);
+                if (curl_error($curl)) {
+                    return $paymentMethods;
+                }
 
-            if (curl_error($curl)) {
-                return $paymentMethods;
+                $response = curl_exec($curl);
+                $paymentMethods = $this->prepare_payment_methods_from_api_response($response);
+
             }
 
-            $response = curl_exec($curl);
-            $paymentMethods = $this->prepare_payment_methods_from_api_response($response);
-
+        } else {
+            $paymentMethods = $_SESSION['local_payments'];
         }
         return $paymentMethods;
     }
@@ -429,6 +439,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     'name' => $ps['name'],
                     'img_url' => !empty($ps['img_url']) ? $ps['img_url'] : ''
                 ];
+                $_SESSION['local_payments'] = $methods;
+                $_SESSION['local_payments_create_time'] = time();
             }
         }
 
@@ -436,7 +448,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     }
 
     public function html_payment_system() {
-        $paymentSystems = $this->get_local_payments();
+        $paymentSystems = $this->get_local_payment_methods();
         if (is_array($paymentSystems) && !empty($paymentSystems)) {
             echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
             foreach ($paymentSystems as $gateway) {
