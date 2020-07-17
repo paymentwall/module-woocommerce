@@ -383,12 +383,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     public function get_local_payment_methods() {
 
         $paymentMethods = [];
-        $psCreateTime =  !empty($_SESSION['local_payments_create_time']) ? (int)$_SESSION['local_payments_create_time'] : 0;
-        if (
-            empty($_SESSION['local_payments']) ||
-            time() > $psCreateTime + self::PS_TIME_BUFFER
-        ) {
-            $_SESSION['local_payments_create_time'] = 1594974792;
+        $localPaymentMethods =  $this->get_data_from_session('payment_methods');
+        if (empty($localPaymentMethods)) {
             $this->init_configs();
             $uesrIp = $this->getRealClientIP();
             $userCountry = $this->get_country_by_ip($uesrIp);
@@ -421,7 +417,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             }
 
         } else {
-            $paymentMethods = $_SESSION['local_payments'];
+            $paymentMethods = $localPaymentMethods;
         }
         return $paymentMethods;
     }
@@ -439,8 +435,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     'name' => $ps['name'],
                     'img_url' => !empty($ps['img_url']) ? $ps['img_url'] : ''
                 ];
-                $_SESSION['local_payments'] = $methods;
-                $_SESSION['local_payments_create_time'] = time();
+                $this->save_data_to_session('payment_methods', $methods);
             }
         }
 
@@ -487,22 +482,29 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * @return mixed
      */
     public function get_country_by_ip($ip) {
-        $params = array(
-            'key' => $this->settings['appkey'],
-            'uid' => self::USER_ID_GEOLOCATION,
-            'user_ip' => $ip
-        );
-        $url = Paymentwall_Config::API_BASE_URL . '/rest/country?' . http_build_query($params);
-        $curl = curl_init($url);
-        curl_setopt($curl,CURLOPT_RETURNTRANSFER, TRUE);
-        $response = curl_exec($curl);
-        if (curl_error($curl)) {
-            return null;
+        $countryCode = $this->get_data_from_session('country_code');
+        if (empty($country_code)) {
+            $params = array(
+                'key' => $this->settings['appkey'],
+                'uid' => self::USER_ID_GEOLOCATION,
+                'user_ip' => $ip
+            );
+            $url = Paymentwall_Config::API_BASE_URL . '/rest/country?' . http_build_query($params);
+            $curl = curl_init($url);
+            curl_setopt($curl,CURLOPT_RETURNTRANSFER, TRUE);
+            $response = curl_exec($curl);
+            if (curl_error($curl)) {
+                return null;
+            }
+            $response = json_decode($response, true);
+            if (!empty($response['code'])) {
+                $this->save_data_to_session('country_code', $response['code']);
+                return $response['code'];
+            }
+        } else {
+            return $countryCode;
         }
-        $response = json_decode($response, true);
-        if (!empty($response['code'])) {
-            return $response['code'];
-        }
+
         return null;
     }
 
@@ -530,6 +532,26 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             unset(WC()->session->pw_ps);
         }
         return $total_rows;
+    }
+
+    public function get_data_from_session($name) {
+
+        $dataFromSession = $_SESSION['paymentwall_data'];
+        if (
+            !empty($dataFromSession[$name]['data'])
+            && !empty($dataFromSession[$name]['expired_time'])
+            && $dataFromSession[$name]['expired_time'] > time()
+        ) {
+            return $dataFromSession[$name]['data'];
+        }
+        return null;
+    }
+
+    public function save_data_to_session($name, $data) {
+        if (!empty($name) && !empty($data)) {
+            $_SESSION['paymentwall_data'][$name]['data'] = $data;
+            $_SESSION['paymentwall_data'][$name]['expired_time'] = time() + self::PS_TIME_BUFFER;
+        }
     }
 
 }
