@@ -551,7 +551,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     public function save_data_to_session($name, $data) {
         if (!empty($name) && !empty($data)) {
             $_SESSION['paymentwall_data'][$name]['data'] = $data;
-            $_SESSION['paymentwall_data']['expired_time'] = time() + self::PS_TIME_BUFFER;
+            $_SESSION['paymentwall_data'][$name]['expired_time'] = time() + self::PS_TIME_BUFFER;
         }
     }
 
