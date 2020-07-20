@@ -378,7 +378,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     }
 
     /**
-     * @return array|bool|string
+     * @return array|null
      */
     public function get_local_payment_methods() {
         $localPaymentMethods = $this->get_data_from_session('payment_methods');
