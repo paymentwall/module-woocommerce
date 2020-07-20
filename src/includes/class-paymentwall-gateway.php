@@ -386,7 +386,9 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             return $localPaymentMethods;
         }
         $response = $this->get_payment_methods_from_api();
-        $localPaymentMethods = $this->prepare_payment_methods_from_api_response($response);
+        if (!empty($response)) {
+            $localPaymentMethods = $this->prepare_payment_methods_from_api_response($response);
+        }
         return $localPaymentMethods;
     }
 
