@@ -478,11 +478,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             WC()->session->pw_ps = json_decode(stripslashes($_POST['pw_payment_system']), true);
         }
     }
-
-    /**
-     * Get user country by IP
-     * @return mixed
-     */
+    
     public function get_country_by_ip($ip) {
         $countryCode = $this->get_data_from_session('country_code');
         if (empty($country_code)) {
@@ -510,11 +506,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         return null;
     }
 
-    /**
-     * @param $order_id
-     * @param $posted_data
-     * @param $order
-     */
     public function get_payment_method_title($prop, $object)
     {
         $paymentSystemName = WC()->session->pw_ps;
