@@ -528,7 +528,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     }
 
     public function get_data_from_session($name) {
-        $pwSessionData = $_SESSION['paymentwall_data'];
+        $pwSessionData = !empty($_SESSION['paymentwall_data']) ? $_SESSION['paymentwall_data'] : [];
         if (
             !empty($pwSessionData[$name]['data'])
             && !empty($pwSessionData[$name]['expired_time'])
