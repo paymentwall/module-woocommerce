@@ -11,7 +11,7 @@
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
     const USER_ID_GEOLOCATION = 'user101';
-    const PS_TIME_BUFFER = 600;
+    const CACHED_DATA_TIME_TO_LIVE = 600;
 
     public $id = 'paymentwall';
     public $has_fields = true;
@@ -258,8 +258,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 }
 
                 if (paymentwall_subscription_enable()) {
-                    $subscriptions = wcs_get_subscriptions_for_order( $original_order_id, array( 'order_type' => 'parent' ) );
-                    $subscription = array_shift( $subscriptions );
+                    $subscriptions = wcs_get_subscriptions_for_order($original_order_id, array('order_type' => 'parent'));
+                    $subscription = array_shift($subscriptions);
                     $subscription_key = get_post_meta($original_order_id, '_subscription_id');
                 }
 
@@ -413,7 +413,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
             $url = Paymentwall_Config::API_BASE_URL . '/payment-systems/?' . http_build_query($params);
             $curl = curl_init($url);
-            curl_setopt($curl, CURLOPT_RETURNTRANSFER, TRUE);
+            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 
             if (curl_error($curl)) {
                 return null;
@@ -481,19 +481,22 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     
     public function get_country_by_ip($ip) {
         $countryCode = $this->get_data_from_session('country_code');
+
         if (empty($country_code)) {
             $params = array(
                 'key' => $this->settings['appkey'],
                 'uid' => self::USER_ID_GEOLOCATION,
                 'user_ip' => $ip
             );
+
             $url = Paymentwall_Config::API_BASE_URL . '/rest/country?' . http_build_query($params);
             $curl = curl_init($url);
-            curl_setopt($curl,CURLOPT_RETURNTRANSFER, TRUE);
+            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
             $response = curl_exec($curl);
             if (curl_error($curl)) {
                 return null;
             }
+
             $response = json_decode($response, true);
             if (!empty($response['code'])) {
                 $this->save_data_to_session('country_code', $response['code']);
@@ -542,7 +545,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     public function save_data_to_session($name, $data) {
         if (!empty($name) && !empty($data)) {
             $_SESSION['paymentwall_data'][$name]['data'] = $data;
-            $_SESSION['paymentwall_data'][$name]['expired_time'] = time() + self::PS_TIME_BUFFER;
+            $_SESSION['paymentwall_data'][$name]['expired_time'] = time() + self::CACHED_DATA_TIME_TO_LIVE;
         }
     }
 
