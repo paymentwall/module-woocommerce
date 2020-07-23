@@ -11,7 +11,6 @@
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
     const USER_ID_GEOLOCATION = 'user101';
-    const CACHED_DATA_TIME_TO_LIVE = 600;
 
     public $id = 'paymentwall';
     public $has_fields = true;
@@ -35,7 +34,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         add_action('woocommerce_api_' . $this->id . '_gateway', array($this, 'handle_action'));
 
         add_action('woocommerce_review_order_before_payment', array($this, 'html_payment_system'));
-        add_action('woocommerce_checkout_update_order_meta', array($this,'update_payment_system_order_meta'));
+        add_action('woocommerce_checkout_update_order_meta',  array($this,'update_payment_system_order_meta'));
         add_filter('woocommerce_order_get_payment_method_title', array($this,'get_payment_method_title'), 10, 2 );
         add_filter('woocommerce_get_order_item_totals', array($this,'update_payment_title_by_selected_method'), 10, 3);
 
@@ -258,8 +257,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 }
 
                 if (paymentwall_subscription_enable()) {
-                    $subscriptions = wcs_get_subscriptions_for_order($original_order_id, array('order_type' => 'parent'));
-                    $subscription = array_shift($subscriptions);
+                    $subscriptions = wcs_get_subscriptions_for_order( $original_order_id, array( 'order_type' => 'parent' ) );
+                    $subscription  = array_shift( $subscriptions );
                     $subscription_key = get_post_meta($original_order_id, '_subscription_id');
                 }
 
@@ -378,30 +377,21 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     }
 
     /**
-     * @return array|null
+     * @return array|bool|string
      */
-    public function get_local_payment_methods() {
-        $localPaymentMethods = $this->get_data_from_session('payment_methods');
-        if (!empty($localPaymentMethods)) {
-            return $localPaymentMethods;
-        }
-        $response = $this->get_payment_methods_from_api();
-        if (!empty($response)) {
-            $localPaymentMethods = $this->prepare_payment_methods_from_api_response($response);
-        }
-        return $localPaymentMethods;
-    }
+    public function get_local_payments() {
 
-    public function get_payment_methods_from_api() {
+        $paymentMethods = [];
+
         $this->init_configs();
-        $userIp = $this->getRealClientIP();
-        $userCountry = $this->get_country_by_ip($userIp);
+        $uesrIp = $this->getRealClientIP();
+        $userCountry = $this->get_country_by_ip($uesrIp);
 
         if (!empty($userCountry)) {
             $params = array(
-                'key' => $this->settings['appkey'],
-                'country_code' => $userCountry,
-                'sign_version' => 3,
+                'key' =>  $this->settings['appkey'],
+                'country_code' => $userCountry ,
+                'sign_version' => 2,
                 'currencyCode' => get_woocommerce_currency(),
                 'amount' => WC()->cart->total
             );
@@ -413,15 +403,17 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
             $url = Paymentwall_Config::API_BASE_URL . '/payment-systems/?' . http_build_query($params);
             $curl = curl_init($url);
-            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($curl,CURLOPT_RETURNTRANSFER,TRUE);
 
             if (curl_error($curl)) {
-                return null;
+                return $paymentMethods;
             }
+
             $response = curl_exec($curl);
-            return $response;
+            $paymentMethods = $this->prepare_payment_methods_from_api_response($response);
+
         }
-        return null;
+        return $paymentMethods;
     }
 
     public function prepare_payment_methods_from_api_response($response) {
@@ -437,7 +429,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     'name' => $ps['name'],
                     'img_url' => !empty($ps['img_url']) ? $ps['img_url'] : ''
                 ];
-                $this->save_data_to_session('payment_methods', $methods);
             }
         }
 
@@ -445,7 +436,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     }
 
     public function html_payment_system() {
-        $paymentSystems = $this->get_local_payment_methods();
+        $paymentSystems = $this->get_local_payments();
         if (is_array($paymentSystems) && !empty($paymentSystems)) {
             echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
             foreach ($paymentSystems as $gateway) {
@@ -464,8 +455,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             }
             echo '</ul>';
             ?>
-            <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""/>
-            <style>li.wc_payment_method.payment_method_paymentwall{ display: none } .wc_payment_methods:not(.paymentwall-method) { margin-top: 1rem; } </style>
+            <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""  />
+            <style>li.wc_payment_method.payment_method_paymentwall{ display: none } .wc_payment_methods:not(.paymentwall-method){ margin-top: 1rem; } </style>
             <?php
         }
     }
@@ -478,37 +469,36 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             WC()->session->pw_ps = json_decode(stripslashes($_POST['pw_payment_system']), true);
         }
     }
-    
+
+    /**
+     * Get user country by IP
+     * @return mixed
+     */
     public function get_country_by_ip($ip) {
-        $countryCode = $this->get_data_from_session('country_code');
-
-        if (empty($country_code)) {
-            $params = array(
-                'key' => $this->settings['appkey'],
-                'uid' => self::USER_ID_GEOLOCATION,
-                'user_ip' => $ip
-            );
-
-            $url = Paymentwall_Config::API_BASE_URL . '/rest/country?' . http_build_query($params);
-            $curl = curl_init($url);
-            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-            $response = curl_exec($curl);
-            if (curl_error($curl)) {
-                return null;
-            }
-
-            $response = json_decode($response, true);
-            if (!empty($response['code'])) {
-                $this->save_data_to_session('country_code', $response['code']);
-                return $response['code'];
-            }
-        } else {
-            return $countryCode;
+        $params = array(
+            'key' => $this->settings['appkey'],
+            'uid' => self::USER_ID_GEOLOCATION,
+            'user_ip' => $ip
+        );
+        $url = Paymentwall_Config::API_BASE_URL . '/rest/country?' . http_build_query($params);
+        $curl = curl_init($url);
+        curl_setopt($curl,CURLOPT_RETURNTRANSFER, TRUE);
+        $response = curl_exec($curl);
+        if (curl_error($curl)) {
+            return null;
         }
-
+        $response = json_decode($response, true);
+        if (!empty($response['code'])) {
+            return $response['code'];
+        }
         return null;
     }
 
+    /**
+     * @param $order_id
+     * @param $posted_data
+     * @param $order
+     */
     public function get_payment_method_title($prop, $object)
     {
         $paymentSystemName = WC()->session->pw_ps;
@@ -518,7 +508,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         return $prop;
     }
 
-    public function update_payment_title_by_selected_method($total_rows, $order, $tax_display) {
+    public function update_payment_title_by_selected_method($total_rows, $order, $tax_display){
         $selectedPaymentMethod = WC()->session->pw_ps;
         if (
             !empty($selectedPaymentMethod['name'])
@@ -528,25 +518,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             unset(WC()->session->pw_ps);
         }
         return $total_rows;
-    }
-
-    public function get_data_from_session($name) {
-        $pwSessionData = !empty($_SESSION['paymentwall_data']) ? $_SESSION['paymentwall_data'] : [];
-        if (
-            !empty($pwSessionData[$name]['data'])
-            && !empty($pwSessionData[$name]['expired_time'])
-            && $pwSessionData[$name]['expired_time'] > time()
-        ) {
-            return $pwSessionData[$name]['data'];
-        }
-        return null;
-    }
-
-    public function save_data_to_session($name, $data) {
-        if (!empty($name) && !empty($data)) {
-            $_SESSION['paymentwall_data'][$name]['data'] = $data;
-            $_SESSION['paymentwall_data'][$name]['expired_time'] = time() + self::CACHED_DATA_TIME_TO_LIVE;
-        }
     }
 
 }
