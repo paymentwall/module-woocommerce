@@ -142,3 +142,10 @@ function check_order_has_virtual_product(WC_Order $order) {
 
     return false;
 }
+
+add_action('init', 'start_sesion');
+function start_sesion() {
+    if (!session_id()) {
+        session_start();
+    }
+}
