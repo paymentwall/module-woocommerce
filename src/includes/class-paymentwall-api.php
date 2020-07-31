@@ -47,10 +47,8 @@ class Paymentwall_Api {
         $shippingAddress = $order->get_address('shipping');
         $billingAddress = $order->get_address('billing');
         if (check_order_has_virtual_product($order)) {
-            $deliveryAddress = $billingAddress;
             $type = 'digital';
         } else {
-            $deliveryAddress = array_merge($billingAddress, $shippingAddress);
             $type = 'physical';
         }
         $data = array(
@@ -64,15 +62,15 @@ class Paymentwall_Api {
             'carrier_type' => !empty($trackingData['tracking_provider']) ? $trackingData['tracking_provider'] : (!empty($trackingData['custom_tracking_provider']) ? $trackingData['custom_tracking_provider'] : 'N/A'),
             'refundable' => 'yes',
             'details' => 'Order status has been updated on ' . date('Y/m/d H:i:s'),
-            'shipping_address[email]' => $deliveryAddress['email'],
-            'shipping_address[firstname]' => $deliveryAddress['first_name'],
-            'shipping_address[lastname]' => $deliveryAddress['last_name'],
-            'shipping_address[country]' => $deliveryAddress['country'],
-            'shipping_address[street]' => $deliveryAddress['address_1'],
-            'shipping_address[state]' => $deliveryAddress['state'] ? $deliveryAddress['state'] : 'N/A',
-            'shipping_address[zip]' => $deliveryAddress['postcode'],
-            'shipping_address[city]' => $deliveryAddress['city'],
-            'shipping_address[phone]' => $deliveryAddress['phone'],
+            'shipping_address[email]' => !empty($shippingAddress['email']) ? $shippingAddress['email'] : $billingAddress['email'],
+            'shipping_address[firstname]' => !empty($shippingAddress['first_name']) ? $shippingAddress['first_name'] : $billingAddress['first_name'],
+            'shipping_address[lastname]' => !empty($shippingAddress['last_name']) ? $shippingAddress['last_name'] : $billingAddress['last_name'],
+            'shipping_address[country]' => !empty($shippingAddress['country']) ? $shippingAddress['country'] : $billingAddress['country'],
+            'shipping_address[street]' => !empty($shippingAddress['address_1']) ? $shippingAddress['address_1'] : $billingAddress['address_1'],
+            'shipping_address[state]' => !empty($shippingAddress['state']) ? $shippingAddress['state'] : !empty($billingAddress['state'])? $billingAddress['state'] : 'N/A',
+            'shipping_address[zip]' => !empty($shippingAddress['postcode']) ? $shippingAddress['postcode'] : !empty($billingAddress['postcode']) ? $billingAddress['postcode'] : 'N/A' ,
+            'shipping_address[city]' => !empty($shippingAddress['city']) ? $shippingAddress['city'] : $billingAddress['city'],
+            'shipping_address[phone]' => !empty($shippingAddress['phone']) ? $shippingAddress['phone'] : $billingAddress['phone'],
             'reason' => 'none',
             'is_test' => $this->settings['test_mode'] ? 1 : 0,
             'attachments' => null
