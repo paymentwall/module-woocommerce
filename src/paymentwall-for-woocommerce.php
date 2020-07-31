@@ -5,7 +5,7 @@ defined('ABSPATH') or exit();
  * Plugin Name: Paymentwall for WooCommerce
  * Plugin URI: https://www.paymentwall.com/en/documentation/WooCommerce/1409
  * Description: Official Paymentwall module for WordPress WooCommerce.
- * Version: 1.6.2
+ * Version: 1.7.0
  * Author: The Paymentwall Team
  * Author URI: http://www.paymentwall.com/
  * Text Domain: paymentwall-for-woocommerce
@@ -87,6 +87,65 @@ add_action('admin_init', 'pw_child_plugin_has_parent_plugin');
 
 function sendDeliveryApi($orderId) {
     $paymentwallApi = new Paymentwall_Api();
-    $paymentwallApi->sendDeliveryApi($orderId);
+    $paymentwallApi->sendDeliveryApi($orderId, Paymentwall_Api::DELIVERY_STATUS_DELIVERED);
 }
 add_action('woocommerce_order_status_completed', 'sendDeliveryApi');
+
+function sendDeliveryApiOrderPlace($orderId) {
+    $paymentwallApi = new Paymentwall_Api();
+    $paymentwallApi->sendDeliveryApi($orderId, Paymentwall_Api::DELIVERY_STATUS_ORDER_PLACE);
+}
+add_action('woocommerce_order_status_processing', 'sendDeliveryApiOrderPlace');
+
+function sendDeliveryApiOrderShipped($meta_id, $post_id, $meta_key, $meta_value) {
+    if ($meta_key != '_wc_shipment_tracking_items'){
+        return;
+    }
+
+    $order = wc_get_order($post_id);
+    if (!$order) {
+        return;
+    }
+
+    if (check_order_has_virtual_product($order)) {
+        return;
+    }
+
+    $trackingData = !is_array($meta_value) ? unserialize($meta_value) : $meta_value;
+
+    if (empty($trackingData) || !is_array($trackingData)) {
+        return;
+    }
+
+    $trackingData = end($trackingData);
+
+    $paymentwallApi = new Paymentwall_Api();
+    $paymentwallApi->sendDeliveryApi($post_id, Paymentwall_Api::DELIVERY_STATUS_ORDER_SHIPPED, $trackingData);
+}
+add_action( 'added_post_meta', 'sendDeliveryApiOrderShipped', 10, 4 );
+
+function check_order_has_virtual_product(WC_Order $order) {
+    $items = $order->get_items();
+    foreach ($items as $item) {
+        if ($item->is_type('line_item')) {
+            $product = $item->get_product();
+
+            if (!$product) {
+                continue;
+            }
+
+            if ($product->is_virtual()) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+add_action('init', 'start_session');
+function start_session() {
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+}
