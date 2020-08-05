@@ -11,7 +11,7 @@
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
     const USER_ID_GEOLOCATION = 'user101';
-    const CACHED_DATA_TIME_TO_LIVE = 3600;
+    const CACHED_DATA_TIME_TO_LIVE = 300;
 
     public $id = 'paymentwall';
     public $has_fields = true;
@@ -381,14 +381,29 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * @return array|null
      */
     public function get_local_payment_methods() {
-        $localPaymentMethods = $this->get_data_from_session('payment_methods');
-        if (!empty($localPaymentMethods)) {
-            return $localPaymentMethods;
+        $testMode = $this->settings['test_mode'];
+        $localPaymentMethods = [];
+
+        if (!$testMode) {
+            $localPaymentMethods = $this->get_data_from_session('payment_methods');
         }
-        $response = $this->get_payment_methods_from_api();
-        if (!empty($response)) {
-            $localPaymentMethods = $this->prepare_payment_methods_from_api_response($response);
+
+        if (empty($localPaymentMethods)) {
+            $response = $this->get_payment_methods_from_api();
+            if (!empty($response)) {
+                $localPaymentMethods = $this->prepare_payment_methods_from_api_response($response);
+                $this->save_data_to_session('payment_methods', $localPaymentMethods);
+            }
         }
+
+        if (!$testMode) {
+            foreach ($localPaymentMethods as $key => $method) {
+                if ($method['id'] == 'test') {
+                    unset($localPaymentMethods[$key]);
+                }
+            }
+        }
+
         return $localPaymentMethods;
     }
 
@@ -437,7 +452,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     'name' => $ps['name'],
                     'img_url' => !empty($ps['img_url']) ? $ps['img_url'] : ''
                 ];
-                $this->save_data_to_session('payment_methods', $methods);
             }
         }
 
