@@ -5,7 +5,7 @@ defined('ABSPATH') or exit();
  * Plugin Name: Paymentwall for WooCommerce
  * Plugin URI: https://www.paymentwall.com/en/documentation/WooCommerce/1409
  * Description: Official Paymentwall module for WordPress WooCommerce.
- * Version: 1.7.0
+ * Version: 1.7.1
  * Author: The Paymentwall Team
  * Author URI: http://www.paymentwall.com/
  * Text Domain: paymentwall-for-woocommerce
@@ -141,4 +141,11 @@ function check_order_has_virtual_product(WC_Order $order) {
     }
 
     return false;
+}
+
+add_action('init', 'start_session');
+function start_session() {
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
 }
