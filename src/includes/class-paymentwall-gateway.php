@@ -459,28 +459,40 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     }
 
     public function html_payment_system() {
-        $paymentMethods = $this->get_local_payment_methods();
-        if (is_array($paymentMethods) && !empty($paymentMethods)) {
-            echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
-            foreach ($paymentMethods as $gateway) {
-                $dataPaymentSystem = array(
-                    'id'    => $gateway['id'],
-                    'name'  => $gateway['name']
-                );
+        if ($this->enabled == 'yes') {
+            $paymentMethods = $this->get_local_payment_methods();
+            if (is_array($paymentMethods) && !empty($paymentMethods)) {
+                echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
+                foreach ($paymentMethods as $gateway) {
+                    $dataPaymentSystem = array(
+                        'id' => $gateway['id'],
+                        'name' => $gateway['name']
+                    );
+                    ?>
+                    <li class="wc_payment_method payment_method_paymentwall_ps">
+                        <input id="payment_method_<?php echo esc_attr($gateway['id']); ?>" type="radio"
+                               class="input-radio pw_payment_system" name="payment_method"
+                               data-payment-system='<?php echo json_encode($dataPaymentSystem); ?>'
+                               value="paymentwall"/>
+                        <label for="payment_method_<?php echo esc_attr($gateway['id']); ?>">
+                            <?php echo $gateway['name']; ?> <img alt="<?php echo $gateway['name']; ?>"
+                                                                 src="<?php echo $gateway['img_url']; ?>">
+                        </label>
+                    </li>
+                    <?php
+                }
+                echo '</ul>';
                 ?>
-                <li class="wc_payment_method payment_method_paymentwall_ps">
-                    <input id="payment_method_<?php echo esc_attr( $gateway['id'] ); ?>" type="radio" class="input-radio pw_payment_system" name="payment_method" data-payment-system='<?php echo json_encode($dataPaymentSystem); ?>' value="paymentwall"  />
-                    <label for="payment_method_<?php echo esc_attr( $gateway['id'] ); ?>">
-                        <?php echo $gateway['name']; ?> <img alt="<?php echo $gateway['name']; ?>" src="<?php echo $gateway['img_url'];?>">
-                    </label>
-                </li>
+                <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""/>
+                <style>li.wc_payment_method.payment_method_paymentwall {
+                        display: none
+                    }
+
+                    .wc_payment_methods:not(.paymentwall-method) {
+                        margin-top: 1rem;
+                    } </style>
                 <?php
             }
-            echo '</ul>';
-            ?>
-            <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""/>
-            <style>li.wc_payment_method.payment_method_paymentwall{ display: none } .wc_payment_methods:not(.paymentwall-method){ margin-top: 1rem; } </style>
-            <?php
         }
     }
 
