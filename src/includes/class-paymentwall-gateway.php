@@ -9,6 +9,7 @@
  *
  */
 class Paymentwall_Gateway extends Paymentwall_Abstract {
+
     const PAYMENTWALL_METHOD = 'paymentwall';
     const USER_ID_GEOLOCATION = 'user101';
     const CACHED_DATA_TIME_TO_LIVE = 300;
