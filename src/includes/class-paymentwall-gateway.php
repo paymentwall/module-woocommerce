@@ -10,10 +10,11 @@
  */
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
+    const PAYMENTWALL_METHOD = 'paymentwall';
     const USER_ID_GEOLOCATION = 'user101';
     const CACHED_DATA_TIME_TO_LIVE = 300;
 
-    public $id = 'paymentwall';
+    public $id = self::PAYMENTWALL_METHOD;
     public $has_fields = true;
 
     public function __construct() {
@@ -34,7 +35,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
         add_action('woocommerce_api_' . $this->id . '_gateway', array($this, 'handle_action'));
 
-        add_action('woocommerce_review_order_before_payment', array($this, 'html_payment_system'));
         add_action('woocommerce_checkout_update_order_meta',  array($this,'update_payment_system_order_meta'));
         add_filter('woocommerce_order_get_payment_method_title', array($this,'get_payment_method_title'), 10, 2 );
         add_filter('woocommerce_get_order_item_totals', array($this,'update_payment_title_by_selected_method'), 10, 3);
@@ -456,32 +456,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         }
 
         return $methods;
-    }
-
-    public function html_payment_system() {
-        $paymentMethods = $this->get_local_payment_methods();
-        if (is_array($paymentMethods) && !empty($paymentMethods)) {
-            echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
-            foreach ($paymentMethods as $gateway) {
-                $dataPaymentSystem = array(
-                    'id'    => $gateway['id'],
-                    'name'  => $gateway['name']
-                );
-                ?>
-                <li class="wc_payment_method payment_method_paymentwall_ps">
-                    <input id="payment_method_<?php echo esc_attr( $gateway['id'] ); ?>" type="radio" class="input-radio pw_payment_system" name="payment_method" data-payment-system='<?php echo json_encode($dataPaymentSystem); ?>' value="paymentwall"  />
-                    <label for="payment_method_<?php echo esc_attr( $gateway['id'] ); ?>">
-                        <?php echo $gateway['name']; ?> <img alt="<?php echo $gateway['name']; ?>" src="<?php echo $gateway['img_url'];?>">
-                    </label>
-                </li>
-                <?php
-            }
-            echo '</ul>';
-            ?>
-            <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""/>
-            <style>li.wc_payment_method.payment_method_paymentwall{ display: none } .wc_payment_methods:not(.paymentwall-method){ margin-top: 1rem; } </style>
-            <?php
-        }
     }
 
     /**
