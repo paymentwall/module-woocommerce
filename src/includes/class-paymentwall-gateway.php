@@ -14,7 +14,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     const USER_ID_GEOLOCATION = 'user101';
     const CACHED_DATA_TIME_TO_LIVE = 300;
 
-    public $id = 'paymentwall';
+    public $id = self::PAYMENTWALL_METHOD;
     public $has_fields = true;
 
     public function __construct() {

@@ -162,7 +162,7 @@ function addPaymentwallGateway($availableGateways){
         }
 
         if (!array_key_exists(Paymentwall_Gateway::PAYMENTWALL_METHOD, $availableGateways)) {
-            $availableGateways[$paymentwallGateway->id] = $paymentwallGateway;
+            $availableGateways[Paymentwall_Gateway::PAYMENTWALL_METHOD] = $paymentwallGateway;
         }
     }
 
@@ -182,7 +182,7 @@ function addBrickGateway($availableGateways)
         }
 
         if (!array_key_exists(Paymentwall_Brick::BRICK_METHOD, $availableGateways)) {
-            $availableGateways[$brickGateway->id] = $brickGateway;
+            $availableGateways[Paymentwall_Brick::BRICK_METHOD] = $brickGateway;
         }
     }
     return $availableGateways;
@@ -191,39 +191,42 @@ function addBrickGateway($availableGateways)
 add_action('woocommerce_review_order_before_payment', 'html_payment_system');
 function html_payment_system() {
     $paymentwallGateway = new Paymentwall_Gateway();
-    if ($paymentwallGateway->is_available()) {
-        $paymentMethods = $paymentwallGateway->get_local_payment_methods();
-        if (is_array($paymentMethods) && !empty($paymentMethods)) {
-            echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
-            foreach ($paymentMethods as $gateway) {
-                $dataPaymentSystem = array(
-                    'id' => $gateway['id'],
-                    'name' => $gateway['name']
-                );
-                ?>
-                <li class="wc_payment_method payment_method_paymentwall_ps">
-                    <input id="payment_method_<?php echo esc_attr($gateway['id']); ?>" type="radio"
-                           class="input-radio pw_payment_system" name="payment_method"
-                           data-payment-system='<?php echo json_encode($dataPaymentSystem); ?>'
-                           value="paymentwall"/>
-                    <label for="payment_method_<?php echo esc_attr($gateway['id']); ?>">
-                        <?php echo $gateway['name']; ?> <img alt="<?php echo $gateway['name']; ?>"
-                                                             src="<?php echo $gateway['img_url']; ?>">
-                    </label>
-                </li>
-                <?php
-            }
-            echo '</ul>';
-            ?>
-            <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""/>
-            <style>li.wc_payment_method.payment_method_paymentwall {
-                    display: none
-                }
 
-                .wc_payment_methods:not(.paymentwall-method) {
-                    margin-top: 1rem;
-                } </style>
+    if (!$paymentwallGateway->is_available()) {
+        return;
+    }
+
+    $paymentMethods = $paymentwallGateway->get_local_payment_methods();
+    if (is_array($paymentMethods) && !empty($paymentMethods)) {
+        echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
+        foreach ($paymentMethods as $gateway) {
+            $dataPaymentSystem = array(
+                'id' => $gateway['id'],
+                'name' => $gateway['name']
+            );
+            ?>
+            <li class="wc_payment_method payment_method_paymentwall_ps">
+                <input id="payment_method_<?php echo esc_attr($gateway['id']); ?>" type="radio"
+                       class="input-radio pw_payment_system" name="payment_method"
+                       data-payment-system='<?php echo json_encode($dataPaymentSystem); ?>'
+                       value="paymentwall"/>
+                <label for="payment_method_<?php echo esc_attr($gateway['id']); ?>">
+                    <?php echo $gateway['name']; ?> <img alt="<?php echo $gateway['name']; ?>"
+                                                         src="<?php echo $gateway['img_url']; ?>">
+                </label>
+            </li>
             <?php
         }
+        echo '</ul>';
+        ?>
+        <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""/>
+        <style>li.wc_payment_method.payment_method_paymentwall {
+                display: none
+            }
+
+            .wc_payment_methods:not(.paymentwall-method) {
+                margin-top: 1rem;
+            } </style>
+        <?php
     }
 }
