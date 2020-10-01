@@ -5,7 +5,7 @@ defined('ABSPATH') or exit();
  * Plugin Name: Paymentwall for WooCommerce
  * Plugin URI: https://www.paymentwall.com/en/documentation/WooCommerce/1409
  * Description: Official Paymentwall module for WordPress WooCommerce.
- * Version: 1.7.1
+ * Version: 1.7.2
  * Author: The Paymentwall Team
  * Author URI: http://www.paymentwall.com/
  * Text Domain: paymentwall-for-woocommerce
@@ -147,5 +147,86 @@ add_action('init', 'start_session');
 function start_session() {
     if (session_status() == PHP_SESSION_NONE) {
         session_start();
+    }
+}
+
+add_filter('woocommerce_available_payment_gateways', 'addPaymentwallGateway', 99, 2);
+function addPaymentwallGateway($availableGateways){
+
+    if (is_checkout() || is_checkout_pay_page()) {
+
+        $paymentwallGateway = new Paymentwall_Gateway();
+
+        if (!$paymentwallGateway->is_available()) {
+            return $availableGateways;
+        }
+
+        if (!array_key_exists(Paymentwall_Gateway::PAYMENTWALL_METHOD, $availableGateways)) {
+            $availableGateways[Paymentwall_Gateway::PAYMENTWALL_METHOD] = $paymentwallGateway;
+        }
+    }
+
+    return $availableGateways;
+}
+
+add_filter('woocommerce_available_payment_gateways', 'addBrickGateway', 100, 2);
+function addBrickGateway($availableGateways)
+{
+
+    if (is_checkout() || is_checkout_pay_page()){
+
+        $brickGateway = new Paymentwall_Brick();
+
+        if (!$brickGateway->is_available()) {
+            return $availableGateways;
+        }
+
+        if (!array_key_exists(Paymentwall_Brick::BRICK_METHOD, $availableGateways)) {
+            $availableGateways[Paymentwall_Brick::BRICK_METHOD] = $brickGateway;
+        }
+    }
+    return $availableGateways;
+}
+
+add_action('woocommerce_review_order_before_payment', 'html_payment_system');
+function html_payment_system() {
+    $paymentwallGateway = new Paymentwall_Gateway();
+
+    if (!$paymentwallGateway->is_available()) {
+        return;
+    }
+
+    $paymentMethods = $paymentwallGateway->get_local_payment_methods();
+    if (is_array($paymentMethods) && !empty($paymentMethods)) {
+        echo '<ul class="wc_payment_methods payment_methods methods paymentwall-method">';
+        foreach ($paymentMethods as $gateway) {
+            $dataPaymentSystem = array(
+                'id' => $gateway['id'],
+                'name' => $gateway['name']
+            );
+            ?>
+            <li class="wc_payment_method payment_method_paymentwall_ps">
+                <input id="payment_method_<?php echo esc_attr($gateway['id']); ?>" type="radio"
+                       class="input-radio pw_payment_system" name="payment_method"
+                       data-payment-system='<?php echo json_encode($dataPaymentSystem); ?>'
+                       value="paymentwall"/>
+                <label for="payment_method_<?php echo esc_attr($gateway['id']); ?>">
+                    <?php echo $gateway['name']; ?> <img alt="<?php echo $gateway['name']; ?>"
+                                                         src="<?php echo $gateway['img_url']; ?>">
+                </label>
+            </li>
+            <?php
+        }
+        echo '</ul>';
+        ?>
+        <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""/>
+        <style>li.wc_payment_method.payment_method_paymentwall {
+                display: none
+            }
+
+            .wc_payment_methods:not(.paymentwall-method) {
+                margin-top: 1rem;
+            } </style>
+        <?php
     }
 }
