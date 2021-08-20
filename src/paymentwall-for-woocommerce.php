@@ -236,3 +236,23 @@ add_action( 'init', 'paymentwall_load_textdomain' );
 function paymentwall_load_textdomain() {
     load_plugin_textdomain( PW_TEXT_DOMAIN, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 }
+
+function handle_brick_charge() {
+    // Check if we're on the correct url
+    global $wp;
+    $current_slug = add_query_arg( array(), $wp->request );
+    $siteUrl = get_site_url();
+    if ($current_slug !== str_replace($siteUrl . '/', '', PW_PLUGIN_URL) . '/templates/pages/wc-api=paymentwall_gateway&action=brick_charge') {
+        return false;
+    }
+    // Check if it's a valid request.
+    $nonce = filter_input(INPUT_GET, '_wpnonce', FILTER_SANITIZE_STRING);
+    if ( ! wp_verify_nonce( $nonce,  'NONCE_KEY')) {
+        $brick = new Paymentwall_Brick();
+        $brick->handle_brick_charge();
+    }
+    die('Process completed' );
+}
+
+add_action( 'template_redirect', 'handle_brick_charge', 0);
+
