@@ -67,11 +67,13 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
     public function payment_fields() {
         $currency = get_woocommerce_currency();
         $display_tokenization = is_checkout() && $this->saved_cards;
+
         session_start();
         $_SESSION['cart_total'] = WC()->cart->cart_contents_total;
         $_SESSION['currency'] = $currency;
         $_SESSION['private_key'] = $this->settings['privatekey'];
         $_SESSION['public_key'] = $this->settings['publickey'];
+        $_SESSION['brick_form_action'] = get_site_url() . '/?wc-api=paymentwall_gateway&action=brick_charge';
 
         if ( $display_tokenization ) {
             $this->supports = array_merge($this->supports, array('tokenization'));
@@ -226,10 +228,11 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         if ($charge->isSuccessful()) {
             if ($charge->isCaptured()) {
                 $result = json_encode($result);
-                echo $result;
+                var_dump($result);
+                die();
             } elseif ($charge->isUnderReview()) {
-                echo 'Under review';
-                exit();
+                var_dump('under_review');
+                die();
             }
         }
         else {
@@ -237,7 +240,8 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
                 $resultError['success'] = 0;
                 $resultError['secure']['formHTML'] = $result['payment']['secure']['formHTML'];
                 $resultError = json_encode($resultError);
-                echo $resultError;
+                var_dump($resultError);
+                die();
             }
         }
     }

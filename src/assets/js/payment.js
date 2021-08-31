@@ -1,6 +1,6 @@
 var Brick_Payment = {
     brick: null,
-    createBrick: function (public_key, amount, currency) {
+    createBrick: function (public_key, amount, currency, action) {
         "use strict";
         if (window.Brick !== undefined) {
             return new Brick({
@@ -8,7 +8,7 @@ var Brick_Payment = {
                 amount: amount,
                 currency: currency,
                 container: 'brick-payments-container',
-                action: 'wc-api=paymentwall_gateway&action=brick_charge',
+                action: action,
                 form: {
                     show_zip: true, // show zip code
                     show_cardholder: true,
