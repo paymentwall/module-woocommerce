@@ -2,8 +2,9 @@
 Contributors: Paymentwall
 Tags: payment, paymentgateway, woocommerce, ecommerce
 Requires at least: 4.0 & WooCommerce 2.6+
-Tested up to: 4.8 & Woocommerce 3.1
-Stable tag: 1.6.2
+Tested up to: Wordpress 5.7.2 & Woocommerce 5.3
+PHP Version: 5.6 or higher
+Stable tag: 1.7.3
 License: The MIT License (MIT)
 
 Official Paymentwall module for WordPress WooCommerce.
@@ -35,6 +36,22 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 1. Screenshot 1 - Paymentwall Settings Page
 
 == Changelog ==
+
+= v1.7.3 [1/09/2021] =
+* Add file language Russia
+
+= v1.7.2 [1/11/2020] =
+* Hide Paymentwall and Brick if they are not activated
+* Prevent other plugins from removing Paymentwall/Brick in checkout process
+
+= v1.7.1 [5/8/2020] =
+* Remove Test method on Live mode
+* Reduce expired time for PS cache
+
+
+= v1.7.0 [31/7/2020] =
+* Replace Paymentwall method by supported local payment methods
+* Add more statuses for Delivery Confirmation API
 
 = v1.6.2 [15/11/2018] =
 * Remove IP Whitelisting

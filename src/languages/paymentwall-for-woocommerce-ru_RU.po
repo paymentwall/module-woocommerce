@@ -1,0 +1,46 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Paymentwall for WooCommerce\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-08-31 10:25+0000\n"
+"PO-Revision-Date: 2021-09-01 09:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: Russian\n"
+"Language: ru-RU\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10 >= 2 && "
+"n%10<=4 &&(n%100<10||n%100 >= 20)? 1 : 2);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Loco https://localise.biz/\n"
+"X-Loco-Version: 2.5.3; wp-5.7.2\n"
+"X-Domain: paymentwall-for-woocommerce"
+
+#: includes/class-paymentwall-brick.php:27
+msgid "Brick"
+msgstr ""
+
+#. Author URI of the plugin
+msgid "http://www.paymentwall.com/"
+msgstr ""
+
+#. URI of the plugin
+msgid "https://www.paymentwall.com/en/documentation/WooCommerce/1409"
+msgstr ""
+
+#. Description of the plugin
+msgid "Official Paymentwall module for WordPress WooCommerce."
+msgstr ""
+
+#. Name of the plugin
+msgid "Paymentwall for WooCommerce"
+msgstr ""
+
+#: includes/class-paymentwall-gateway.php:118
+#, php-format
+msgid "Please continue the purchase via %s using the widget below."
+msgstr "Продолжайте покупку через %s используя виджет ниже."
+
+#. Author of the plugin
+msgid "The Paymentwall Team"
+msgstr ""
