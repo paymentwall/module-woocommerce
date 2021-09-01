@@ -247,7 +247,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $payment->init_configs(true);
 
         $pingback_params = $_GET;
-
+        
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
         if ($pingback->validate(true)) {
 
@@ -331,9 +331,6 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 break;
             case 'ipn':
                 $this->ipn_response();
-                break;
-            case 'brick_charge':
-                $this->handle_brick_charge();
                 break;
             default:
                 break;
@@ -544,10 +541,4 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         }
     }
 
-    public function handle_brick_charge()
-    {
-        $paymentwallBrick = new Paymentwall_Brick();
-
-        return $paymentwallBrick->handle_brick_charge();
-    }
 }

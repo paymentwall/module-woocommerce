@@ -230,4 +230,3 @@ function html_payment_system() {
         <?php
     }
 }
-
