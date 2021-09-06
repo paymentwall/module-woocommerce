@@ -65,13 +65,20 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
      * Displays credit card form
      */
     public function payment_fields() {
+        $currency = get_woocommerce_currency();
         $display_tokenization = is_checkout() && $this->saved_cards;
+        session_start();
+        $_SESSION['cart_total'] = WC()->cart->cart_contents_total;
+        $_SESSION['currency'] = $currency;
+        $_SESSION['private_key'] = $this->settings['privatekey'];
+        $_SESSION['public_key'] = $this->settings['publickey'];
 
         if ( $display_tokenization ) {
             $this->supports = array_merge($this->supports, array('tokenization'));
             $this->tokenization_script();
             $this->saved_payment_methods();
         }
+        $brickFormUrl = PW_PLUGIN_URL . '/templates/pages/brick_form.php';
 
         echo $this->get_template('brick/form.html', array(
             'payment_id' => $this->id,
@@ -79,7 +86,8 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
             'entry_card_number' => __("Card number", PW_TEXT_DOMAIN),
             'entry_card_expiration' => __("Card expiration", PW_TEXT_DOMAIN),
             'entry_card_cvv' => __("Card CVV", PW_TEXT_DOMAIN),
-            'plugin_url' => PW_PLUGIN_URL
+            'plugin_url' => PW_PLUGIN_URL,
+            'brick_form_url' => $brickFormUrl,
         ));
 
         $hasSubscription = class_exists( 'WC_Subscriptions_Cart' ) && WC_Subscriptions_Cart::cart_contains_subscription();
@@ -114,11 +122,6 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
      * @throws Exception
      */
     function prepare_card_info($order) {
-        if (!isset($_POST['brick'])) {
-            throw new Exception("Payment Invalid!");
-        }
-
-        $brick = $_POST['brick'];
         $data = array(
             'amount' => $order->get_total(),
             'currency' => $order->get_currency(),
@@ -126,37 +129,8 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
             'plan' => !method_exists($order, 'get_id') ? $order->id : $order->get_id(),
             'description' => sprintf(__('%s - Order #%s', PW_TEXT_DOMAIN), esc_html(get_bloginfo('name', 'display')), $order->get_order_number()),
         );
-        if ($brick['token'] && $brick['fingerprint']) {
-            $data = array_merge($data, array(
-                'token' => $brick['token'],
-                'fingerprint' => $brick['fingerprint']
-            ));
 
-        } elseif (!empty($_POST['wc-brick-payment-token'])) {
-            $token = WC_Payment_Tokens::get($_POST['wc-brick-payment-token'])->get_token();
-            $data = array_merge($data, array(
-                'token' => $token
-            ));
-        }
-        if (!empty($brick['cc_brick_secure_token'])) {
-            $data['secure_token'] = $brick['cc_brick_secure_token'];
-        }
-        if (!empty($brick['cc_brick_charge_id'])) {
-            $data['charge_id'] = $brick['cc_brick_charge_id'];
-        }
         return $data;
-    }
-
-    /**
-     * Add custom fields validation
-     */
-    public function brick_fields_validation() {
-        if ($_POST['payment_method'] == $this->id) {
-            $brick = $_POST['brick'];
-
-            if ((trim($brick['token']) == '' || trim($brick['fingerprint']) == '') && empty($_POST['wc-brick-payment-token']))
-                wc_add_notice(sprintf(__('The <strong>%s</strong> payment has some errors. Please try again.', PW_TEXT_DOMAIN), $this->title), 'error');
-        }
     }
 
     /**
@@ -166,33 +140,14 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
      */
     public function process_standard_payment($order) {
         $return = array();
-        $cardInfo = $this->prepare_card_info($order);
-        $charge = new Paymentwall_Charge();
-        $charge->create(array_merge(
-            $this->prepare_user_profile_data($order), // for User Profile API
-            $cardInfo,
-            $this->get_extra_data($order)
-        ));
+        session_start();
 
-        $response = $charge->getPublicData();
-        $responseData = json_decode($charge->getRawResponseData(), true);
-
-        if ($charge->isSuccessful() && empty($responseData['secure'])) {
+        $charge = $_SESSION['charge'];
+        $responseData = $_SESSION['charge_response_data'];
+        if (empty($responseData['secure'])) {
             $return['result'] = 'success';
             $return['redirect'] = $this->process_success($order, $charge, $message);
             $return['message'] = $message;
-
-            if (is_checkout() && !empty($_POST['wc-brick-new-payment-method']) && $_POST['wc-brick-payment-token'] == 'new') {
-                $token = new WC_Payment_Token_CC();
-                $token->set_token($responseData['card']['token']);
-                $token->set_gateway_id($this->id);
-                $token->set_card_type($responseData['card']['type']);
-                $token->set_last4($responseData['card']['last4']);
-                $token->set_expiry_month($responseData['card']['exp_month']);
-                $token->set_expiry_year('20' . $responseData['card']['exp_year']);
-                $token->set_user_id(get_current_user_id());
-                $token->save();
-            }
         } elseif (!empty($responseData['secure'])) {
             WC()->session->set('orderId', !method_exists($order, 'get_id') ? $order->id : $order->get_id());
             $return['result'] = 'secure';
@@ -217,16 +172,22 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
     }
 
     public function process_success($order, $charge, &$message) {
-        if ($charge->isCaptured()) {
+        if ($charge->isCaptured() && $charge->isUnderReview()) {
             // Add order note
             $order->add_order_note(sprintf(
                 __('Brick payment approved (ID: %s)', PW_TEXT_DOMAIN),
                 $charge->getId()));
             // Payment complete
-            $message = "Your order has been received !";
+            $message = "Your order has been received and is under review!";
         } elseif ($charge->isUnderReview()) {
             $order->update_status('on-hold');
             $message = 'Your order is under review !';
+        } elseif ($charge->isCaptured()) {
+            $order->add_order_note(sprintf(
+                __('Brick payment approved (ID: %s)', PW_TEXT_DOMAIN),
+                $charge->getId()));
+            // Payment complete
+            $message = "Your order has been received!";
         }
 
         $thanksPage = $this->get_return_url($order);
@@ -245,4 +206,70 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
 
         return $available_gateways;
     }
+
+    public function handle_brick_charge()
+    {
+        session_start();
+
+        $this->init_configs();
+        $parameters = $_POST;
+        $chargeInfo = $this->getChargeInfo($parameters);
+        $charge = $this->createCharge($chargeInfo);
+        $response = $charge->getPublicData();
+        $responseData = json_decode($charge->getRawResponseData(), true);
+        $result = [];
+        $result['payment'] = $responseData;
+        $result = array_merge($result, json_decode($response, true));
+        $_SESSION['charge_response_data'] = $responseData;
+        $_SESSION['charge'] = $charge;
+
+        if ($charge->isSuccessful()) {
+            if ($charge->isCaptured()) {
+                $result = json_encode($result);
+                echo $result;
+            } elseif ($charge->isUnderReview()) {
+                echo 'Under review';
+                exit();
+            }
+        }
+        else {
+            if (isset($result['payment']['secure']['formHTML'])) {
+                $resultError['success'] = 0;
+                $resultError['secure']['formHTML'] = $result['payment']['secure']['formHTML'];
+                $resultError = json_encode($resultError);
+                echo $resultError;
+            }
+        }
+    }
+
+    function getChargeInfo($params)
+    {
+        $chargeInfo = [
+            'email' => $params['email'],
+            'history[registration_date]' => '1489655092',
+            'amount' => (float) $_SESSION['cart_total'],
+            'currency' => $_SESSION['currency'],
+            'token' => $params['brick_token'],
+            'fingerprint' => $params['brick_fingerprint'],
+            'description' => 'Brick Paymentwall'
+        ];
+        if (isset($params['brick_charge_id']) && isset($params['brick_secure_token'])) {
+            $chargeInfo['charge_id'] = $params['brick_charge_id'];
+            $chargeInfo['secure_token'] = $params['brick_secure_token'];
+        }
+        if (!empty($params['brick_reference_id'])) {
+            $chargeInfo['reference_id'] = $params['brick_reference_id'];
+        }
+
+        return $chargeInfo;
+    }
+
+    function createCharge($chargeInfo)
+    {
+        $charge = new Paymentwall_Charge();
+        $charge->create($chargeInfo);
+
+        return $charge;
+    }
+
 }
