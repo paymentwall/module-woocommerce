@@ -3,14 +3,14 @@
 defined('ABSPATH') or exit();
 /*
  * Plugin Name: Paymentwall for WooCommerce
- * Plugin URI: https://www.paymentwall.com/en/documentation/WooCommerce/1409
+ * Plugin URI: https://docs.paymentwall.com/modules/woocommerce
  * Description: Official Paymentwall module for WordPress WooCommerce.
- * Version: 1.7.2
+ * Version: 1.7.3
  * Author: The Paymentwall Team
  * Author URI: http://www.paymentwall.com/
  * Text Domain: paymentwall-for-woocommerce
  * License: The MIT License (MIT)
- *
+ * Domain Path: /languages
  */
 
 define('PW_TEXT_DOMAIN', 'paymentwall-for-woocommerce');
@@ -230,3 +230,10 @@ function html_payment_system() {
         <?php
     }
 }
+
+
+add_action( 'init', 'paymentwall_load_textdomain' );
+function paymentwall_load_textdomain() {
+    load_plugin_textdomain( PW_TEXT_DOMAIN, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+}
+
