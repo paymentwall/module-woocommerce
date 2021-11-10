@@ -63,5 +63,15 @@ return array(
             '0' => 'No'
         ),
         'default' => '1'
+    ),
+    'use_paymentwall_hosted_page' => array(
+        'title' => __('Open in Paymentwall hosted page', PW_TEXT_DOMAIN),
+        'type' => 'select',
+        'label' => __('Open in Paymentwall hosted page', PW_TEXT_DOMAIN),
+        'options' => array(
+            '0' => 'No',
+            '1' => 'Yes'
+        ),
+        'default' => '0'
     )
 );
