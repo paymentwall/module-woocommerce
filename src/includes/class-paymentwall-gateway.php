@@ -113,6 +113,11 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         // Clear shopping cart
         WC()->cart->empty_cart();
 
+        if ($this->settings['use_paymentwall_hosted_page']) {
+            wp_redirect($widget->getUrl());
+            return;
+        }
+
         echo $this->get_template('widget.html', array(
             'orderId' => $order_id,
             'title' => sprintf(__('Please continue the purchase via %s using the widget below.', PW_TEXT_DOMAIN), $paymentSystemName),
