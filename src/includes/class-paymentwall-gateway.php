@@ -1,4 +1,5 @@
 <?php
+
 /*
  * Paymentwall Gateway for WooCommerce
  *
@@ -8,6 +9,7 @@
  * License: The MIT License (MIT)
  *
  */
+
 class Paymentwall_Gateway extends Paymentwall_Abstract {
 
     const PAYMENTWALL_METHOD = 'paymentwall';
@@ -240,19 +242,15 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
      * Check the response from Paymentwall's Servers
      */
     function ipn_response() {
-
         $original_order_id = $_GET['goodsid'];
         $order = wc_get_order($_GET['goodsid']);
-
         if (!$order) {
             die('The order is Invalid!');
         }
 
         $payment = wc_get_payment_gateway_by_order($order);
         $payment->init_configs(true);
-
         $pingback_params = $_GET;
-        
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
         if ($pingback->validate(true)) {
 
@@ -268,10 +266,10 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                     $subscription_key = get_post_meta($original_order_id, '_subscription_id');
                 }
 
-                if ($pingback->getParameter('initial_ref') && (isset($subscription_key[0]) && $subscription_key[0] == $pingback->getParameter('initial_ref'))) {
+                if ($this->is_valid_renewal_pingback($pingback_params, $original_order_id)) {
                     $subscription->update_status('on-hold');
                     $subscription->add_order_note(__('Subscription renewal payment due: Status changed from Active to On hold.', PW_TEXT_DOMAIN));
-                    $new_order = wcs_create_renewal_order( $subscription );
+                    $new_order = wcs_create_renewal_order($subscription);
                     $new_order->add_order_note(__('Payment approved by Paymentwall - Transaction Id: ' . $pingback->getReferenceId(), PW_TEXT_DOMAIN));
                     update_post_meta(!method_exists($new_order, 'get_id') ? $new_order->id : $new_order->get_id(), '_subscription_id', $pingback->getReferenceId());
                     $new_order->set_payment_method($subscription->payment_gateway);
@@ -302,6 +300,25 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         } else {
             die($pingback->getErrorSummary());
         }
+    }
+
+    /**
+     * @param $pingback_params
+     * @param $orderId
+     * @return bool
+     */
+    private function is_valid_renewal_pingback($pingback_params, $orderId)
+    {
+        $subscription_key = get_post_meta($orderId, '_subscription_id');
+
+        if (empty($pingback_params['initial_ref'])
+            || empty($pingback_params['subscription_id'])
+            || !isset($subscription_key[0])
+        ) {
+            return false;
+        }
+
+        return $subscription_key[0] == $pingback_params['subscription_id'];
     }
 
     /**
@@ -336,6 +353,15 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 break;
             case 'ipn':
                 $this->ipn_response();
+                break;
+            case 'brick_charge':
+                $this->handle_brick_charge();
+                break;
+            case 'brick_subscription':
+                $this->handle_brick_subscription();
+                break;
+            case 'brick_form':
+                $this->prepare_brick_form();
                 break;
             default:
                 break;
@@ -546,4 +572,25 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         }
     }
 
+    public function handle_brick_charge()
+    {
+        $paymentwallBrick = new Paymentwall_Brick();
+
+        return $paymentwallBrick->handle_brick_charge();
+    }
+
+    public function handle_brick_subscription()
+    {
+        $paymentwallBrickSubcription = new Paymentwall_Brick_Subscription();
+
+        echo $paymentwallBrickSubcription->handle_brick_subscription();
+        die();
+    }
+
+    public function prepare_brick_form()
+    {
+        $paymentwallBrick = new Paymentwall_Brick();
+
+        return $paymentwallBrick->prepare_brick_form();
+    }
 }

@@ -237,3 +237,13 @@ function paymentwall_load_textdomain() {
     load_plugin_textdomain( PW_TEXT_DOMAIN, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 }
 
+add_filter('woocommerce_thankyou_order_received_text', 'custom_message_thank_you_page', 20, 2);
+function custom_message_thank_you_page()
+{
+    $str = null;
+    if (isset($_SESSION['message_thank_you_page'])) {
+        $str = '<h3>' . $_SESSION['message_thank_you_page'] . '</h3>';
+    }
+
+    return $str;
+}

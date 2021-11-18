@@ -4,7 +4,7 @@ Tags: payment, paymentgateway, woocommerce, ecommerce
 Requires at least: 4.0 & WooCommerce 2.6+
 Tested up to: Wordpress 5.7.2 & Woocommerce 5.3
 PHP Version: 5.6 or higher
-Stable tag: 1.7.3
+Stable tag: 1.8.0
 License: The MIT License (MIT)
 
 Official Paymentwall module for WordPress WooCommerce.
@@ -39,6 +39,12 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 
 = v1.7.4 [10/11/2021]
 * New option to open widget in Paymentwall hosted page
+
+= v1.7.4 [10/11/2021]
+* New option to open widget in Paymentwall hosted page
+
+= v1.8.0 [21/09/2021] =
+* Upgrade brick version from 1.4 to 1.6
 
 = v1.7.3 [1/09/2021] =
 * Add file language Russia
