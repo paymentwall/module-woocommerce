@@ -31,7 +31,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
             'tokenization',
         );
         // Our Actions
-        add_filter('woocommerce_after_checkout_validation', array($this, 'brick_fields_validation'));
+        add_filter('woocommerce_after_checkout_validation', __CLASS__ . '::brick_preprocessing_validation');
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
 
         add_filter('woocommerce_available_payment_gateways', __CLASS__ . '::get_available_payment_gateways');
@@ -44,7 +44,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         if ($isPingback) {
             Paymentwall_Config::getInstance()->set(array(
                 'api_type' => Paymentwall_Config::API_GOODS,
-                'private_key' => $this->settings['test_mode'] ? $this->settings['privatekey'] : $this->settings['secretkey']
+                'private_key' => $this->settings['secretkey']
             ));
         } else {
             Paymentwall_Config::getInstance()->set(array(
@@ -385,5 +385,14 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         }
 
         return $endpoint . 'brick_charge';
+    }
+
+    public static function brick_preprocessing_validation($posted) {
+        if ($posted['payment_method'] != self::BRICK_METHOD) {
+            return;
+        }
+        if ($_POST['brick-pre-validation-flag'] == "1") {
+            wc_add_notice( __( "brick_custom_notice", 'fake_error' ), 'error');
+        }
     }
 }

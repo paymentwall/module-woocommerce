@@ -149,8 +149,8 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
     
     public function handle_brick_subscription()
     {
-        if ($this->count_subscription_products() > 1) {
-            return json_encode($this->prepare_multiple_subscriptions_error_response());
+        if (!$this->is_processable_subscription_payment()) {
+            return json_encode($this->prepare_unprocessable_subscriptions_error_response());
         }
 
         $orderId = $this->create_temporary_order();
@@ -181,28 +181,33 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
     /**
      * @return int
      */
-    private function count_subscription_products()
+    private function is_processable_subscription_payment()
     {
         $count = 0;
         if ( ! empty( WC()->cart->cart_contents ) && ! wcs_cart_contains_renewal() ) {
             foreach ( WC()->cart->cart_contents as $cart_item ) {
                 if ( WC_Subscriptions_Product::is_subscription( $cart_item['data'] ) ) {
                     $count++;
+                } else {
+                    return false;
                 }
             }
         }
+        if ($count > 1) {
+            return false;
+        }
 
-        return $count;
+        return true;
     }
 
     /**
      * @return array[]
      */
-    private function prepare_multiple_subscriptions_error_response()
+    private function prepare_unprocessable_subscriptions_error_response()
     {
         return [
             "error" => [
-                'message' => 'Brick currently does not support payment for multiple subscriptions'
+                'message' => 'Brick currently does not support payment for multiple subscriptions or mixed cart'
             ]
         ];
     }

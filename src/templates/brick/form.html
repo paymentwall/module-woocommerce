@@ -1,57 +1,72 @@
 <iframe id="brick-form-payment" frameborder="0" src="{{brick_form_url}}"></iframe>
 <style>
     #brick-form-payment {
-        min-height: 500px;
+        min-height: 450px;
     }
 </style>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script type="text/javascript">
     $(document).ready(function () {
         var haveToken = '{{have_token}}'
-        if (haveToken) {
-            $('#place_order').show()
+
+        var checkout_form = $('form.checkout');
+        checkout_form.on('checkout_place_order', function () {
+            if ($('#brick-pre-validation-flag').length == 0) {
+                checkout_form.append('<input type="hidden" id="brick-pre-validation-flag" name="brick-pre-validation-flag" value="1">');
+            }
+            return true;
+        });
+
+        $(document.body).on('checkout_error', function () {
+            var error_count = $('.woocommerce-error li').length;
+            $('.woocommerce-error').css('display', 'block');
+
+            if (error_count == 1) {
+                // If the error show up when users checkout by the other method
+                if ($('.woocommerce-error li').text().trim() != 'brick_custom_notice') {
+                    return;
+                }
+                $('.woocommerce-error').css('display', 'none');
+
+                // For save card scenario
+                if (haveToken) {
+                    $('.woocommerce-SavedPaymentMethods-token').each(function () {
+                        if ($(this).find('input').prop("checked")) {
+                            byPassValidationForBrick();
+                            $('#place_order').click();
+                        }
+                    })
+                    return;
+                }
+
+                // Process Brick pay
+                $('#brick-form-payment').contents().find('button.js-brick-submit').click();
+
+            } else {
+                $('.woocommerce-error li').each(function(){
+                    var error_text = $(this).text();
+                    if (error_text.trim() == 'brick_custom_notice'){
+                        $(this).css('display', 'none');
+                    }
+                });
+            }
+        });
+
+        if (haveToken && !$('#wc-brick-payment-token-new').is(':checked')) {
             $('#brick-form-payment').hide()
         } else {
             $('#brick-form-payment').show()
         }
-        if ($('#payment_method_brick').is(':checked')) {
-            $('#place_order').hide()
-            var paymentMethod = $('input[name=wc-brick-payment-token]').val()
-            if (typeof paymentMethod == 'undefined') {
-                $('#place_order').hide()
-            }
-            if (paymentMethod !== 'new' && typeof paymentMethod !== 'undefined') {
-                $('#place_order').show()
-            }
-            handleShowBrickForm()
-        }
 
-        $('input[name=payment_method]').click(function () {
-            if ($(this).val() == 'brick') {
-                $('#place_order').hide()
-                if ($('input[name=wc-brick-payment-token]:checked').val() !== 'new' && typeof $('input[name=wc-brick-payment-token]').val() !== 'undefined') {
-                    $('#place_order').show()
-                } else {
-                    $('#place_order').hide()
-                }
-                handleShowBrickForm()
+        var cardTokens = $('input[name=wc-brick-payment-token]');
+
+        cardTokens.click(function () {
+            if ($(this).val() === 'new') {
+                $('#brick-form-payment').show()
             } else {
-                $('#place_order').show()
+                $('#brick-form-payment').hide()
             }
         })
-
-        function handleShowBrickForm() {
-            $('input[name=wc-brick-payment-token]').click(function () {
-                if ($(this).val() === 'new') {
-                    $('#brick-form-payment').show()
-                    $('#place_order').hide()
-                } else {
-                    $('#brick-form-payment').hide()
-                    $('#place_order').show()
-                }
-            })
-        }
-
 
         brickSaveToAccount = $("#wc-brick-new-payment-method");
         if (brickSaveToAccount.length > 0) {
@@ -72,6 +87,10 @@
 
         window.processBrickPlaceOrder = function () {
             $('#place_order').click()
+        }
+
+        window.byPassValidationForBrick = function () {
+            $('#brick-pre-validation-flag').val('0');
         }
     })
 </script>

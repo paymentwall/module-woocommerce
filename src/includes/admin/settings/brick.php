@@ -44,16 +44,6 @@ return array(
         'description' => __('Your Brick Private Key', PW_TEXT_DOMAIN),
         'default' => ''
     ),
-    'test_mode' => array(
-        'title' => __('Test Mode', PW_TEXT_DOMAIN),
-        'type' => 'select',
-        'description' => __('Enable test mode', PW_TEXT_DOMAIN),
-        'options' => array(
-            '0' => 'No',
-            '1' => 'Yes'
-        ),
-        'default' => '0'
-    ),
     'enable_delivery' => array(
         'title' => __('Enable Delivery Confirmation API', PW_TEXT_DOMAIN),
         'type' => 'select',

@@ -3,7 +3,7 @@
 <div id='brick-payments-container' style="margin-top: 10px;"></div>
 <style>
     #brick-payment-form {
-        min-height: 500px;
+        min-height: 450px;
     }
     .loader-text {
         text-align: center;
@@ -22,14 +22,15 @@
     var saveCard = '{{save_card}}'
     var brick;
 
-    window.onload = function () {
+    $(document).ready(function () {
         brick = Brick_Payment.createBrick(publicKey, amount, currency, brickFormAction, saveCard)
         brick.showPaymentForm(function (success) {
+            parent.byPassValidationForBrick();
             parent.processBrickPlaceOrder()
         }, function (errors) {
 
         })
-    }
+    })
 
     if (saveCard) {
         waitingBrickForm = setInterval(function() {
@@ -41,4 +42,12 @@
             }
         }, 300)
     }
+
+    waitingBrickPayButton = setInterval(function() {
+        if ($('button.js-brick-submit').length > 0) {
+            $('button.js-brick-submit').hide();
+            clearInterval(waitingBrickPayButton);
+        }
+    }, 200)
+
 </script>
