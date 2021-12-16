@@ -150,6 +150,58 @@ function start_session() {
     }
 }
 
+add_action('updated_postmeta', 'pw_on_order_tracking_change', 10, 4);
+
+add_action('added_post_meta', 'pw_on_order_tracking_change', 10, 4);
+
+function pw_on_order_tracking_change($meta_id, $post_id, $meta_key, $meta_value) {
+    if ($meta_key != '_wc_shipment_tracking_items' || empty($meta_value)) {
+        return;
+    }
+
+    $tracking_data = $meta_value;
+
+    if (!is_array($meta_value)) {
+        $tracking_data = unserialize($meta_value);
+    }
+
+    if (empty($tracking_data) || empty($tracking_data[count($tracking_data) - 1])) {
+        return;
+    }
+
+    $tracking_data = $tracking_data[0];
+
+    $order = wc_get_order($post_id);
+    if (!$order) {
+        return;
+    }
+
+    $gateway = pw_get_order_paymentwall_gateway($order);
+    if (!$gateway || $gateway->id != Paymentwall_Gateway::PAYMENTWALL_METHOD) {
+        return;
+    }
+
+    pw_update_delivery_status($order, Paymentwall_Api::DELIVERY_STATUS_ORDER_SHIPPED, $tracking_data);
+}
+
+function pw_get_order_paymentwall_gateway(WC_Order $order) {
+    $paymentGateway = wc_get_payment_gateway_by_order($order);
+
+    if ($paymentGateway->id == Paymentwall_Gateway::PAYMENTWALL_METHOD) {
+        return $paymentGateway;
+    }
+    return false;
+}
+
+function pw_update_delivery_status(WC_Order $order, $status, $tracking_data = null) {
+    try {
+        $paymentwallApi = new Paymentwall_Api();
+        $paymentwallApi->sendDeliveryApi($order->get_id(), $status, $tracking_data);
+    } catch (\Exception $e) {
+        return $e->getMessage();
+    }
+}
+
 add_filter('woocommerce_available_payment_gateways', 'addPaymentwallGateway', 99, 2);
 function addPaymentwallGateway($availableGateways){
 
