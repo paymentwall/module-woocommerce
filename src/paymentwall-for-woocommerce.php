@@ -165,7 +165,7 @@ function pw_on_order_tracking_change($meta_id, $post_id, $meta_key, $meta_value)
         $tracking_data = unserialize($meta_value);
     }
 
-    if (empty($tracking_data) || empty($tracking_data[count($tracking_data) - 1])) {
+    if (empty($tracking_data) || empty($tracking_data[0])) {
         return;
     }
 
@@ -176,19 +176,18 @@ function pw_on_order_tracking_change($meta_id, $post_id, $meta_key, $meta_value)
         return;
     }
 
-    $gateway = pw_get_order_paymentwall_gateway($order);
-    if (!$gateway || $gateway->id != Paymentwall_Gateway::PAYMENTWALL_METHOD) {
+    $gateway = wc_get_payment_gateway_by_order($order);
+    if (!$gateway || !is_paymentwall_gateway($gateway)) {
         return;
     }
 
     pw_update_delivery_status($order, Paymentwall_Api::DELIVERY_STATUS_ORDER_SHIPPED, $tracking_data);
 }
 
-function pw_get_order_paymentwall_gateway(WC_Order $order) {
-    $paymentGateway = wc_get_payment_gateway_by_order($order);
-
+function is_paymentwall_gateway($paymentGateway) : bool
+{
     if ($paymentGateway->id == Paymentwall_Gateway::PAYMENTWALL_METHOD) {
-        return $paymentGateway;
+        return true;
     }
     return false;
 }
