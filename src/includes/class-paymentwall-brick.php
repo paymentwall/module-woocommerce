@@ -72,6 +72,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         } else {
             $haveToken = false;
         }
+        $haveToken = false;
 
         $brickFormUrl = get_site_url() . '/?wc-api=paymentwall_gateway&action=brick_form';
         echo $this->get_template('brick/form.html', array(
@@ -271,6 +272,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
      */
     protected function handle_storing_card($charge, $email)
     {
+        return;
         if (!$charge->isSuccessful()) {
             return;
         }
