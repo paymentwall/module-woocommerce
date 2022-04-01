@@ -44,16 +44,6 @@ return array(
         'description' => __('Your Brick Private Key', PW_TEXT_DOMAIN),
         'default' => ''
     ),
-    'test_mode' => array(
-        'title' => __('Test Mode', PW_TEXT_DOMAIN),
-        'type' => 'select',
-        'description' => __('Enable test mode', PW_TEXT_DOMAIN),
-        'options' => array(
-            '0' => 'No',
-            '1' => 'Yes'
-        ),
-        'default' => '0'
-    ),
     'enable_delivery' => array(
         'title' => __('Enable Delivery Confirmation API', PW_TEXT_DOMAIN),
         'type' => 'select',
@@ -64,12 +54,12 @@ return array(
         ),
         'default' => '1'
     ),
-    'saved_cards' => array(
-        'title' => __('Saved Cards', PW_TEXT_DOMAIN),
-        'lable' => __('Enable Payment via Saved Cards', PW_TEXT_DOMAIN),
-        'type' => 'checkbox',
-        'description' => __('If enabled, users will be able to pay with a saved card during checkout. Card details are saved on Paymentwall servers, not on your store', PW_TEXT_DOMAIN),
-        'default' => 'no',
-        'desc_tip' => true,
-    )
+//    'saved_cards' => array(
+//        'title' => __('Saved Cards', PW_TEXT_DOMAIN),
+//        'lable' => __('Enable Payment via Saved Cards', PW_TEXT_DOMAIN),
+//        'type' => 'checkbox',
+//        'description' => __('If enabled, users will be able to pay with a saved card during checkout. Card details are saved on Paymentwall servers, not on your store', PW_TEXT_DOMAIN),
+//        'default' => 'no',
+//        'desc_tip' => true,
+//    )
 );

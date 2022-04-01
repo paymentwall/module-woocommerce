@@ -1,98 +1,96 @@
-<script src="https://api.paymentwall.com/brick/brick.1.4.js"></script>
-<div class="paymentwall-brick-form">
-    <div id="brick-loading" style="display: none;">
-        <ul class="woocommerce-message">
-            <li><img src="{{plugin_url}}/assets/images/loading.gif"> Please wait while order is being processed...</li>
-        </ul>
-    </div>
-    <div id="brick-errors" style="display: none;"></div>
-    <input type="hidden" name="brick[token]" id="brick-token"/>
-    <input type="hidden" name="brick[fingerprint]" id="brick-fingerprint"/>
-    <input type="hidden" name="brick[success]" id="brick-get-token-success" value="0"/>
-    <input type="hidden" name="brick[cc_brick_charge_id]" id="hidden-brick-charge-id"/>
-    <input type="hidden" name="brick[cc_brick_secure_token]" id="hidden-brick-secure-token"/>
-
-    <p class="form-row form-row form-row-wide validate-required">
-        <label>
-            <strong>{{entry_card_number}}</strong>
-            <span class="required">*</span>
-        </label>
-        <input data-brick="card-number" id="card-number" class="input-text wc-credit-card-form-card-number"
-               type="text" placeholder="•••• •••• •••• ••••" autocomplete="off"/>
-    </p>
-
-    <p class="form-row form-row form-row-wide validate-required">
-        <label>
-            <strong>{{entry_card_expiration}}</strong>
-            <span class="required">*</span>
-        </label>
-        <span>
-            <input data-brick="card-expiration-month" id="card-expiration-month" class="input-text"
-                   type="text" placeholder="MM" size="2"/>
-            / <input data-brick="card-expiration-year" id="card-expiration-year" class="input-text"
-                     type="text" placeholder="YY" size="4"/>
-        </span>
-    </p>
-
-    <p class="form-row form-row form-row-wide validate-required">
-        <label>
-            <strong>{{entry_card_cvv}}</strong>
-            <span class="required">*</span>
-        </label>
-        <span>
-            <input data-brick="card-cvv" id="card-cvv" class="input-text wc-credit-card-form-card-cvc" type="text"
-                   placeholder="CVV" autocomplete="off"/>
-        </span>
-    </p>
-    <br/>
-</div>
-
-<script type="text/javascript">
-    jQuery(document).ready(function () {
-        setTimeout(function() {
-            Brick_Payment.createBrick('{{public_key}}');
-        }, 3000);
-
-        if (jQuery('input[name=wc-brick-payment-token]').length > 1) {
-            jQuery('input:radio[name=wc-brick-payment-token]:first').attr('checked', true);
-            jQuery('.paymentwall-brick-form').hide();
-
-        }
-
-        jQuery('input[name=wc-brick-payment-token]').click(function() {
-            if (jQuery(this).val() == 'new') {
-                jQuery('.paymentwall-brick-form').show();
-                jQuery('#brick-loading').hide();
-                jQuery('#brick-errors').hide();
-            } else {
-                jQuery('.paymentwall-brick-form').hide();
-            }
-        });
-
-        jQuery('.paymentwall-brick-form').parent().prepend(jQuery('#brick-errors')).prepend(jQuery('#brick-loading'));
-        
-        // Brick manipulate the checkout
-        jQuery('form.checkout').unbind('checkout_place_order_{{payment_id}}').on('checkout_place_order_{{payment_id}}', function (e) {
-            if (jQuery('input[name=wc-brick-payment-token]:checked').val() == 'new' || jQuery('input[name=wc-brick-payment-token]:checked').val() == undefined) {
-                // Check token created
-                if (jQuery('#brick-get-token-success').val() == '1') {
-                    jQuery('#brick-get-token-success').val(0)
-                    return true;
-                }
-                Brick_Payment.brickTokenizeCard();
-                return false;
-            } else {
-                window.addEventListener("message", Brick_Payment.threeDSecureMessageHandle, false);
-                Brick_Payment.sendPaymentRequest();
-                return false;
-            }
-        });
-
-    });
-</script>
+<iframe id="brick-form-payment" frameborder="0" src="{{brick_form_url}}"></iframe>
 <style>
-    #card-expiration-month, #card-expiration-year, #card-cvv {
-        width: 80px;
-        display: inline-block;
+    #brick-form-payment {
+        min-height: 450px;
     }
 </style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        var haveToken = '{{have_token}}'
+
+        var checkout_form = $('form.checkout');
+        checkout_form.on('checkout_place_order', function () {
+            if ($('#brick-pre-validation-flag').length == 0) {
+                checkout_form.append('<input type="hidden" id="brick-pre-validation-flag" name="brick-pre-validation-flag" value="1">');
+            }
+            return true;
+        });
+
+        $(document.body).on('checkout_error', function () {
+            var error_count = $('.woocommerce-error li').length;
+            $('.woocommerce-error').css('display', 'block');
+
+            if (error_count == 1) {
+                // If the error show up when users checkout by the other method
+                if ($('.woocommerce-error li').text().trim() != 'brick_custom_notice') {
+                    return;
+                }
+                $('.woocommerce-error').css('display', 'none');
+
+                // For save card scenario
+                if (haveToken) {
+                    $('.woocommerce-SavedPaymentMethods-token').each(function () {
+                        if ($(this).find('input').prop("checked")) {
+                            byPassValidationForBrick();
+                            $('#place_order').click();
+                        }
+                    })
+                    return;
+                }
+
+                // Process Brick pay
+                $('#brick-form-payment').contents().find('button.js-brick-submit').click();
+
+            } else {
+                $('.woocommerce-error li').each(function(){
+                    var error_text = $(this).text();
+                    if (error_text.trim() == 'brick_custom_notice'){
+                        $(this).css('display', 'none');
+                    }
+                });
+            }
+        });
+
+        if (haveToken && !$('#wc-brick-payment-token-new').is(':checked')) {
+            $('#brick-form-payment').hide()
+        } else {
+            $('#brick-form-payment').show()
+        }
+
+        var cardTokens = $('input[name=wc-brick-payment-token]');
+
+        cardTokens.click(function () {
+            if ($(this).val() === 'new') {
+                $('#brick-form-payment').show()
+            } else {
+                $('#brick-form-payment').hide()
+            }
+        })
+
+        brickSaveToAccount = $("#wc-brick-new-payment-method");
+        if (brickSaveToAccount.length > 0) {
+            brickSaveToAccount.hide();
+            $("label[for='wc-brick-new-payment-method']").hide();
+
+            window.trigger_save_card = function (save) {
+                if (brickSaveToAccount.length == 0) {
+                    return;
+                }
+                if (save) {
+                    brickSaveToAccount.prop('checked', true);
+                } else {
+                    brickSaveToAccount.prop('checked', false);
+                }
+            }
+        }
+
+        window.processBrickPlaceOrder = function () {
+            $('#place_order').click()
+        }
+
+        window.byPassValidationForBrick = function () {
+            $('#brick-pre-validation-flag').val('0');
+        }
+    })
+</script>

@@ -1,0 +1,53 @@
+<script src="https://api.paymentwall.com/brick/1.6/build/brick.1.6.0.min.js"></script>
+<script src="{{payment_js_url}}"></script>
+<div id='brick-payments-container' style="margin-top: 10px;"></div>
+<style>
+    #brick-payment-form {
+        min-height: 450px;
+    }
+    .loader-text {
+        text-align: center;
+    }
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+<script defer>
+    var global = global || window;
+    global._babelPolyfill = false;
+
+    var currency = '{{currency}}';
+    var amount = '{{cart_total}}';
+    var publicKey = '{{public_key}}';
+    var brickFormAction = '{{brick_form_action}}'
+    var saveCard = '{{save_card}}'
+    var brick;
+
+    $(document).ready(function () {
+        brick = Brick_Payment.createBrick(publicKey, amount, currency, brickFormAction, saveCard)
+        brick.showPaymentForm(function (success) {
+            parent.byPassValidationForBrick();
+            parent.processBrickPlaceOrder()
+        }, function (errors) {
+
+        })
+    })
+
+    if (saveCard) {
+        waitingBrickForm = setInterval(function() {
+            if ($("#brick-store-card").length > 0) {
+                $("#brick-store-card").click(function() {
+                    parent.trigger_save_card($(this).is(':checked'))
+                });
+                clearInterval(waitingBrickForm)
+            }
+        }, 300)
+    }
+
+    waitingBrickPayButton = setInterval(function() {
+        if ($('button.js-brick-submit').length > 0) {
+            $('button.js-brick-submit').hide();
+            clearInterval(waitingBrickPayButton);
+        }
+    }, 200)
+
+</script>

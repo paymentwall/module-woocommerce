@@ -136,20 +136,21 @@ abstract class Paymentwall_Abstract extends WC_Payment_Gateway
         return $customer_orders;
     }
     
-    function cumulative_payments_customer($status, $billing_email) {
-        
+    function cumulative_payments_customer($status, $billing_email)
+    {
+
         $customer_orders = $this->get_customer_orders($status, $billing_email);
         $sum_total = 0;
-        
+
         if (!empty($customer_orders)) {
-            foreach ( $customer_orders as $customer_order ) {
+            foreach ($customer_orders as $customer_order) {
                 $order = new WC_Order($customer_order->ID);
                 $amount = $order->get_total();
                 $sum_total += $amount;
             }
+
+            return $sum_total;
         }
-        
-        return $sum_total;
     }
 
     function s_datediff( $str_interval, $dt_menor, $dt_maior, $relative=false){
