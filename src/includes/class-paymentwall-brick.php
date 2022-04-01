@@ -26,7 +26,8 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         $this->notify_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'Paymentwall_Brick', home_url('/')));
         $this->method_title = __('Brick', 'paymentwall-for-woocommerce');
         $this->method_description = __('Brick provides in-app and fully customizable credit card processing for merchants around the world. With Brick connected to banks in different countries, Paymentwall has created the best global credit card processing solution in the world to help you process in local currency.', PW_TEXT_DOMAIN);
-        $this->saved_cards = 'yes' === $this->get_option( 'saved_cards' );
+//        $this->saved_cards = 'yes' === $this->get_option( 'saved_cards' );
+        $this->saved_cards = false;
         $this->supports = array(
             'tokenization',
         );
@@ -150,7 +151,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
             $chargeInfo = $this->prepare_charge_info($parameters, $order);
             $charge = $this->create_charge($chargeInfo);
         } else {
-            $charge = WC()->session->get('charge');
+            $charge = WC()->session->get('brick_charge');
         }
         $return = array();
         if ($charge->isSuccessful()) {
@@ -231,7 +232,7 @@ class Paymentwall_Brick extends Paymentwall_Abstract {
         $charge = $this->create_charge($chargeInfo);
         $response = $charge->getPublicData();
         $responseData = json_decode($charge->getRawResponseData(), true);
-        WC()->session->set('charge', $charge);
+        WC()->session->set('brick_charge', $charge);
         WC()->session->set('amount_charge_brick', (float)WC()->cart->get_total('edit'));
         WC()->session->set('cart_charge_brick', WC()->cart->get_cart());
         $result = [

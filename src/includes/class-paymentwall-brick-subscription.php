@@ -79,7 +79,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             $subscriptionInfo = $this->prepare_subscription_info($parameters, $orderId);
             $paymentwall_subscription = $this->create_subscription($subscriptionInfo);
         } else {
-            $paymentwall_subscription = WC()->session->get('subscription');
+            $paymentwall_subscription = WC()->session->get('brick_subscription');
         }
         $response = json_decode($paymentwall_subscription->getRawResponseData());
         if ($paymentwall_subscription->isSuccessful()) {
@@ -160,7 +160,7 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
         $parameters = $_POST;
         $dataPrepare = $this->prepare_subscription_info($parameters, $orderId);
         $subscription = $this->create_subscription($dataPrepare);
-        WC()->session->set('subscription', $subscription);
+        WC()->session->set('brick_subscription', $subscription);
         $response = $subscription->getPublicData();
         $responseData = json_decode($subscription->getRawResponseData());
 

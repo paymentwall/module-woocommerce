@@ -37,14 +37,11 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 
 == Changelog ==
 
-= v1.7.4 [10/11/2021]
-* New option to open widget in Paymentwall hosted page
-
-= v1.7.4 [10/11/2021]
-* New option to open widget in Paymentwall hosted page
-
 = v1.8.0 [21/09/2021] =
 * Upgrade brick version from 1.4 to 1.6
+
+= v1.7.4 [10/11/2021]
+* New option to open widget in Paymentwall hosted page
 
 = v1.7.3 [1/09/2021] =
 * Add file language Russia
