@@ -37,6 +37,9 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 
 == Changelog ==
 
+= v1.8.1 [04/07/2022] =
+* Fix duplicated charge for Brick 1.6
+
 = v1.8.0 [21/09/2021] =
 * Upgrade brick version from 1.4 to 1.6
 
