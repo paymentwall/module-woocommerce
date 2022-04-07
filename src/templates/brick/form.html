@@ -17,7 +17,9 @@
             return true;
         });
 
-        $(document.body).on('checkout_error', function () {
+        $(document.body).unbind('checkout_error').on('checkout_error', handlePreValidation)
+        
+        function handlePreValidation() {
             var error_count = $('.woocommerce-error li').length;
             $('.woocommerce-error').css('display', 'block');
 
@@ -50,7 +52,7 @@
                     }
                 });
             }
-        });
+        }
 
         if (haveToken && !$('#wc-brick-payment-token-new').is(':checked')) {
             $('#brick-form-payment').hide()
