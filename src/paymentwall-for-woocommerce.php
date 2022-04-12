@@ -5,7 +5,7 @@ defined('ABSPATH') or exit();
  * Plugin Name: Paymentwall for WooCommerce
  * Plugin URI: https://docs.paymentwall.com/modules/woocommerce
  * Description: Official Paymentwall module for WordPress WooCommerce.
- * Version: 1.8.1
+ * Version: 1.9.0
  * Author: The Paymentwall Team
  * Author URI: http://www.paymentwall.com/
  * Text Domain: paymentwall-for-woocommerce
@@ -147,6 +147,57 @@ add_action('init', 'start_session');
 function start_session() {
     if (session_status() == PHP_SESSION_NONE) {
         session_start();
+    }
+}
+
+add_action('updated_postmeta', 'pw_on_order_tracking_change', 10, 4);
+
+add_action('added_post_meta', 'pw_on_order_tracking_change', 10, 4);
+
+function pw_on_order_tracking_change($meta_id, $post_id, $meta_key, $meta_value) {
+    if ($meta_key != '_wc_shipment_tracking_items' || empty($meta_value)) {
+        return;
+    }
+
+    $tracking_data = $meta_value;
+
+    if (!is_array($meta_value)) {
+        $tracking_data = unserialize($meta_value);
+    }
+
+    if (empty($tracking_data[0])) {
+        return;
+    }
+
+    $tracking_data_to_send = $tracking_data[0];
+
+    $order = wc_get_order($post_id);
+    if (!$order) {
+        return;
+    }
+
+    $gateway = wc_get_payment_gateway_by_order($order);
+    if (is_gateway_valid($gateway)) {
+        return;
+    }
+
+    pw_update_delivery_status($order, Paymentwall_Api::DELIVERY_STATUS_ORDER_SHIPPED, $tracking_data_to_send);
+}
+
+function is_gateway_valid($gateway = null) {
+    if (empty($gateway) || empty($gateway->id) || $gateway->id != Paymentwall_Gateway::PAYMENTWALL_METHOD) {
+        return false;
+    }
+
+    return true;
+}
+
+function pw_update_delivery_status(WC_Order $order, $status, $tracking_data = null) {
+    try {
+        $paymentwallApi = new Paymentwall_Api();
+        $paymentwallApi->sendDeliveryApi($order->get_id(), $status, $tracking_data);
+    } catch (\Exception $e) {
+        return $e->getMessage();
     }
 }
 
