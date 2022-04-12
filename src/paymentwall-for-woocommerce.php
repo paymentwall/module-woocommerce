@@ -5,7 +5,7 @@ defined('ABSPATH') or exit();
  * Plugin Name: Paymentwall for WooCommerce
  * Plugin URI: https://docs.paymentwall.com/modules/woocommerce
  * Description: Official Paymentwall module for WordPress WooCommerce.
- * Version: 1.8.1
+ * Version: 1.9.0
  * Author: The Paymentwall Team
  * Author URI: http://www.paymentwall.com/
  * Text Domain: paymentwall-for-woocommerce
@@ -165,11 +165,11 @@ function pw_on_order_tracking_change($meta_id, $post_id, $meta_key, $meta_value)
         $tracking_data = unserialize($meta_value);
     }
 
-    if (empty($tracking_data) || empty($tracking_data[0])) {
+    if (empty($tracking_data[0])) {
         return;
     }
 
-    $tracking_data = $tracking_data[0];
+    $tracking_data_to_send = $tracking_data[0];
 
     $order = wc_get_order($post_id);
     if (!$order) {
@@ -177,19 +177,19 @@ function pw_on_order_tracking_change($meta_id, $post_id, $meta_key, $meta_value)
     }
 
     $gateway = wc_get_payment_gateway_by_order($order);
-    if (!$gateway || !is_paymentwall_gateway($gateway)) {
+    if (is_gateway_valid($gateway)) {
         return;
     }
 
-    pw_update_delivery_status($order, Paymentwall_Api::DELIVERY_STATUS_ORDER_SHIPPED, $tracking_data);
+    pw_update_delivery_status($order, Paymentwall_Api::DELIVERY_STATUS_ORDER_SHIPPED, $tracking_data_to_send);
 }
 
-function is_paymentwall_gateway($paymentGateway) : bool
-{
-    if ($paymentGateway->id == Paymentwall_Gateway::PAYMENTWALL_METHOD) {
-        return true;
+function is_gateway_valid($gateway = null) {
+    if (empty($gateway) || empty($gateway->id) || $gateway->id != Paymentwall_Gateway::PAYMENTWALL_METHOD) {
+        return false;
     }
-    return false;
+
+    return true;
 }
 
 function pw_update_delivery_status(WC_Order $order, $status, $tracking_data = null) {

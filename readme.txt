@@ -37,6 +37,9 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 
 == Changelog ==
 
+= v1.9.0 [04/12/2022] =
+* Support Woocommerce Shipment Tracking for Delivery Confirmation API
+
 = v1.8.1 [04/07/2022] =
 * Fix duplicated charge for Brick 1.6
 
