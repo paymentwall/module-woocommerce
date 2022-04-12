@@ -153,6 +153,10 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
             return json_encode($this->prepare_unprocessable_subscriptions_error_response());
         }
 
+        if (!get_current_user_id()) {
+            return json_encode($this->prepare_error_message_for_guest_subscription());
+        }
+
         $orderId = $this->create_temporary_order();
         $this->set_subscription($orderId);
 
@@ -208,6 +212,15 @@ class Paymentwall_Brick_Subscription extends Paymentwall_Brick {
         return [
             "error" => [
                 'message' => 'Brick currently does not support payment for multiple subscriptions or mixed cart'
+            ]
+        ];
+    }
+
+    private function prepare_error_message_for_guest_subscription()
+    {
+        return [
+            "error" => [
+                'message' => 'Please log in to pay for the subscription'
             ]
         ];
     }
