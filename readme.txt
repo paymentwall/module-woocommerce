@@ -37,6 +37,9 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 
 == Changelog ==
 
+= v1.10.0 [04/27/2022] =
+* Brick - Not support Subscription for guest checkout
+
 = v1.9.0 [04/12/2022] =
 * Support Woocommerce Shipment Tracking for Delivery Confirmation API
 
