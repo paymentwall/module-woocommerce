@@ -292,6 +292,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
 
             } elseif ($pingback->isCancelable()) {
                 $order->cancel_order(__('Reason: ' . $pingback->getParameter('reason'), PW_TEXT_DOMAIN));
+                $order->update_status('wc-refunded');
             } elseif ($pingback->isUnderReview()) {
                 $order->update_status('on-hold');
             }
