@@ -37,6 +37,9 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 
 == Changelog ==
 
+= v1.10.1 [05/04/2022] =
+* Correct order status
+
 = v1.10.0 [04/27/2022] =
 * Brick - Not support Subscription for guest checkout
 
