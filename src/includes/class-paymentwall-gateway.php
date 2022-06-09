@@ -22,7 +22,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
     public function __construct() {
         $this->supports = array(
             'products',
-            'subscriptions'
+            'subscriptions',
+            'subscription_cancellation'
         );
 
         parent::__construct();
@@ -252,18 +253,19 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
         $payment->init_configs(true);
         $pingback_params = $_GET;
         $pingback = new Paymentwall_Pingback($pingback_params, $this->getRealClientIP());
+
+        if (paymentwall_subscription_enable()) {
+            $subscriptions = wcs_get_subscriptions_for_order($original_order_id, array('order_type' => 'parent'));
+            $subscription  = array_shift($subscriptions);
+            $subscription_key = get_post_meta($original_order_id, '_subscription_id');
+        }
+
         if ($pingback->validate(true)) {
 
             if ($pingback->isDeliverable()) {
 
                 if ($order->get_status() == PW_ORDER_STATUS_PROCESSING) {
                     die(PW_DEFAULT_SUCCESS_PINGBACK_VALUE);
-                }
-
-                if (paymentwall_subscription_enable()) {
-                    $subscriptions = wcs_get_subscriptions_for_order($original_order_id, array('order_type' => 'parent'));
-                    $subscription  = array_shift($subscriptions);
-                    $subscription_key = get_post_meta($original_order_id, '_subscription_id');
                 }
 
                 if ($this->is_valid_renewal_pingback($pingback_params, $original_order_id)) {
@@ -296,6 +298,9 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             } elseif ($pingback->isUnderReview()) {
                 $order->update_status('on-hold');
             } elseif ($pingback->getType() == Paymentwall_Pingback::PINGBACK_TYPE_SUBSCRIPTION_CANCELLATION) {
+                $statusOriginal = $subscription->get_status();
+                $subscription->update_status('cancelled');
+                $subscription->add_order_note(__('Status changed from ' . $statusOriginal . ' to Cancelled'));
                 $order->update_status('cancelled');
             }
 
