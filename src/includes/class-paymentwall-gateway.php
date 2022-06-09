@@ -295,6 +295,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 $order->update_status('wc-refunded');
             } elseif ($pingback->isUnderReview()) {
                 $order->update_status('on-hold');
+            } elseif ($pingback->getType() == Paymentwall_Pingback::PINGBACK_TYPE_SUBSCRIPTION_CANCELLATION) {
+                $order->update_status('cancelled');
             }
 
             die(PW_DEFAULT_SUCCESS_PINGBACK_VALUE);
