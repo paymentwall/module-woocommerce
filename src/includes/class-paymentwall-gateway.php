@@ -298,9 +298,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
             } elseif ($pingback->isUnderReview()) {
                 $order->update_status('on-hold');
             } elseif ($pingback->getType() == Paymentwall_Pingback::PINGBACK_TYPE_SUBSCRIPTION_CANCELLATION) {
-                $statusOriginal = $subscription->get_status();
                 $subscription->update_status('cancelled');
-                $subscription->add_order_note(__('Status changed from ' . $statusOriginal . ' to Cancelled'));
                 $order->update_status('cancelled');
             }
 
