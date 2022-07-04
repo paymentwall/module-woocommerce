@@ -37,6 +37,9 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 
 == Changelog ==
 
+= v1.10.2 [07/04/2022] =
+* Fix display all Payment system
+
 = v1.10.1 [05/04/2022] =
 * Correct order status
 
