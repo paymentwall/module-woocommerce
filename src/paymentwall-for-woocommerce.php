@@ -270,7 +270,16 @@ function html_payment_system() {
         }
         echo '</ul>';
         ?>
-        <input id="pw_gateway" type="hidden" class="hidden" name="pw_payment_system" value=""/>
+        <input id="pw_payment_method" type="hidden" class="hidden" name="pw_payment_system" value=""/>
+        <script type="text/javascript">
+            var pwPSs = document.getElementsByClassName("pw_payment_system");
+            for (var i = 0; i < pwPSs.length; i++) {
+                pwPSs[i].addEventListener('click', function(){
+                    var paymentData = this.getAttribute('data-payment-system');
+                    document.getElementById("pw_payment_method").value = paymentData;
+                }, false);
+            }
+        </script>
         <style>li.wc_payment_method.payment_method_paymentwall {
                 display: none
             }
