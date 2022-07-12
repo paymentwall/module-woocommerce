@@ -37,6 +37,9 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 
 == Changelog ==
 
+= v1.11.0 [07/12/2022] =
+* Support subscription cancellation
+
 = v1.10.2 [07/04/2022] =
 * Only display selected local payment method on widget
 
