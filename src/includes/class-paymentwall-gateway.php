@@ -300,8 +300,8 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 $pingback->getType() == Paymentwall_Pingback::PINGBACK_TYPE_SUBSCRIPTION_CANCELLATION
                 && !empty($subscription)
             ) {
-                $subscription->update_status('cancelled');
-                $order->update_status('cancelled');
+                $subscription->update_status('wc-pending-cancel');
+                $order->update_status('completed');
             }
 
             die(PW_DEFAULT_SUCCESS_PINGBACK_VALUE);

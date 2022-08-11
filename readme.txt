@@ -37,6 +37,9 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 
 == Changelog ==
 
+= v1.12.0 [08/11/2022] =
+* Correct subscription status
+
 = v1.11.0 [07/12/2022] =
 * Support subscription cancellation
 
