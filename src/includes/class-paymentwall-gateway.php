@@ -83,7 +83,7 @@ class Paymentwall_Gateway extends Paymentwall_Abstract {
                 $goods = array($subscriptionData['goods']);
             } else {
                 $goods = array(
-                    new Paymentwall_Product($order_id, $orderData['total'], $orderData['currencyCode'], 'Order #' . $order_id)
+                    new Paymentwall_Product($order_id, $orderData['total'], $orderData['currencyCode'], sprintf(__('Order #%s', PW_TEXT_DOMAIN), $order->get_order_number()))
                 );
             }
         } catch (Exception $e) {

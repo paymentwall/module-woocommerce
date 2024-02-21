@@ -37,6 +37,9 @@ View our full installation guide: <https://docs.paymentwall.com/modules/woocomme
 
 == Changelog ==
 
+= v1.13.0 [02/21/2024] =
+* Use a more proper way to display the Order Number on widget
+
 = v1.12.0 [08/11/2022] =
 * Correct subscription status
 
